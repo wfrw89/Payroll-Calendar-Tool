@@ -1077,7 +1077,7 @@
             <div class="button-group">
                 <button class="success" onclick="generateCalendar()">✓ Generate Calendar</button>
                 <button class="primary" onclick="saveConfiguration()">💾 Save Configuration</button>
-                <button class="secondary" onclick="exportToXLSX()">📊 Export to Excel</button>
+                <button class="secondary" onclick="exportToXLSX()">📗 Export to Excel</button>
                 <button class="secondary" onclick="exportToPDF()">📄 Export to PDF</button>
                 <button class="secondary" onclick="resetForm()">⟲ Reset Form</button>
             </div>
@@ -1204,6 +1204,7 @@
                 console.warn('   2. Host the file on a web server');
                 console.warn('   3. Manually add holidays using the "Add Manual Bank Holiday" feature');
             }
+
             loadSavedConfigurations();
         }
 
@@ -1725,7 +1726,7 @@
                     payDate = moveToPriorWorkingDay(payDate, employeeCountryArray);
                     payDates.push({
                         date: payDate,
-                        label: new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' }),
+                        label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year}`,
                         month: month
                     });
                 }
@@ -1743,7 +1744,7 @@
 
                     payDates.push({
                         date: payDate1,
-                        label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} P1`,
+                        label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year} P1`,
                         month: month,
                         periodInMonth: 1
                     });
@@ -1762,7 +1763,7 @@
 
                     payDates.push({
                         date: payDate2,
-                        label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} P2`,
+                        label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year} P2`,
                         month: month,
                         periodInMonth: 2
                     });
@@ -1778,7 +1779,7 @@
                     payDate = moveToPriorWorkingDay(payDate, employeeCountryArray);
                     payDates.push({
                         date: payDate,
-                        label: `Period ${payPeriodNum} (${payDate.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })})`,
+                        label: `Period ${payPeriodNum} (${payDate.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })})`,
                         month: payDate.getMonth()
                     });
                     currentDate.setDate(currentDate.getDate() + increment);
