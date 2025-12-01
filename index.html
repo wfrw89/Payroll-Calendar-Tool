@@ -144,7 +144,7 @@
             color: var(--text-dark);
         }
 
-        .form-group input,
+        .form-group input:not([type="checkbox"]),
         .form-group select {
             padding: 12px 16px;
             border: 1.5px solid var(--border-light);
@@ -154,9 +154,22 @@
             background: var(--bg-card);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-dark);
+            height: 48px;
+            line-height: 1.5;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: none;
         }
 
-        .form-group input:focus,
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .form-group input:not([type="checkbox"]):focus,
         .form-group select:focus {
             outline: none;
             border-color: var(--primary-purple);
@@ -164,9 +177,28 @@
             transform: translateY(-1px);
         }
 
-        .form-group input:hover:not(:focus),
+        .form-group input:not([type="checkbox"]):hover:not(:focus),
         .form-group select:hover:not(:focus) {
             border-color: var(--border-medium);
+        }
+
+        /* Checkbox Styling */
+        .form-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-purple);
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .form-group input[type="checkbox"]:focus {
+            outline: 2px solid var(--primary-purple);
+            outline-offset: 2px;
+        }
+
+        .form-group input[type="checkbox"]:hover {
+            opacity: 0.8;
         }
 
         .help-text {
@@ -1066,7 +1098,15 @@
             </table>
 
             <div class="add-task-row">
-                <input type="text" id="newTaskName" placeholder="Enter task name (e.g., Final Approval)">
+                <select id="newTaskTemplate" onchange="populateTaskName()" style="flex: 1; padding: 12px 16px; border: 1.5px solid var(--border-light); border-radius: 8px; font-size: 15px;">
+                    <option value="">-- Select pre-made task or enter custom --</option>
+                    <option value="Updated Reports Due">Updated Reports Due</option>
+                    <option value="Value Date on Bank File">Value Date on Bank File</option>
+                    <option value="Payslips Available on Portal">Payslips Available on Portal</option>
+                    <option value="3rd Party Payments">3rd Party Payments</option>
+                    <option value="custom">Custom task...</option>
+                </select>
+                <input type="text" id="newTaskName" placeholder="Or type custom task name" style="flex: 1; display: none;">
                 <input type="number" id="newTaskOffset" placeholder="Days" value="1" min="0">
                 <select id="newTaskPosition" style="width: 100px; padding: 12px 16px; border: 1.5px solid var(--border-light); border-radius: 8px; font-size: 15px;">
                     <option value="after">After</option>
@@ -1170,21 +1210,21 @@
 
         const defaultTasks = [
             // Core tasks (cannot be deleted)
-            { name: 'Payroll Cut Off', offset: 10, fromPrevious: false, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days before Pay Date', dueTime: '' },
+            { name: 'Payroll Cut Off', offset: 10, fromPrevious: false, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days before Pay Date', dueTime: '' },
             // Default system tasks (can be deleted)
-            { name: 'Send changes to ICP', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days after Cut Off', dueTime: '' },
-            { name: 'Reports back from ICP', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days after Send changes to ICP', dueTime: '' },
+            { name: 'Send changes to ICP', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days after Cut Off', dueTime: '' },
+            { name: 'Reports back from ICP', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days after Send changes to ICP', dueTime: '' },
             // Core tasks
-            { name: 'Payroll Reports Due', offset: 3, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days after Reports back from ICP', dueTime: '' },
+            { name: 'Payroll Reports Due', offset: 3, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days after Reports back from ICP', dueTime: '' },
             // Default system tasks
-            { name: 'Feedback from Client', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days after Reports Due', dueTime: '' },
+            { name: 'Feedback from Client', offset: 2, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days after Reports Due', dueTime: '' },
             // Core tasks
-            { name: 'Payroll Sign-Off Due', offset: 3, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, description: 'Working days after Feedback from Client', dueTime: '' },
-            { name: 'Final Reports Due', offset: 2, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: true, beforePayDate: false, description: 'Working days after Sign-Off', dueTime: '' },
+            { name: 'Payroll Sign-Off Due', offset: 3, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Working days after Feedback from Client', dueTime: '' },
+            { name: 'Final Reports Due', offset: 2, fromPrevious: true, core: true, deletable: false, canBeBeforePayDate: true, beforePayDate: false, afterPayDate: false, description: 'Working days after Sign-Off', dueTime: '' },
             // Default system tasks
-            { name: 'Net Pay Sent', offset: 1, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: true, beforePayDate: false, description: 'Working days after Final Reports', dueTime: '' },
+            { name: 'Net Pay Sent', offset: 1, fromPrevious: true, core: false, deletable: true, canBeBeforePayDate: true, beforePayDate: false, afterPayDate: false, description: 'Working days after Final Reports', dueTime: '' },
             // Core tasks
-            { name: 'Pay Date', offset: 0, fromPrevious: false, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, description: 'Pay date from Pay Date Configuration', dueTime: '' }
+            { name: 'Pay Date', offset: 0, fromPrevious: false, core: true, deletable: false, canBeBeforePayDate: false, beforePayDate: false, afterPayDate: false, description: 'Pay date from Pay Date Configuration', dueTime: '' }
         ];
         // NOTE: Pay Date is ALWAYS the original pay date from the Pay Date Configuration section
         // It only moves if it falls on a weekend or bank holiday - NEVER based on task offsets
@@ -1422,21 +1462,24 @@
             const tbody = document.getElementById('taskList');
             tbody.innerHTML = '';
 
+            // Tasks are now sorted chronologically, just display in array order
             tasks.forEach((task, index) => {
+
                 const tr = document.createElement('tr');
                 tr.className = task.core ? 'task-row core' : 'task-row';
 
-                let descText = task.description;
-                if (task.name === 'Payroll Cut Off') {
-                    descText = task.description;
-                } else if (task.name === 'Pay Date') {
+                // Use the stored task description (preserves the user's original selection)
+                let descText;
+                if (task.name === 'Pay Date') {
                     descText = 'From Pay Date Configuration (only moves for weekends/holidays)';
-                } else if (task.beforePayDate) {
-                    descText = task.offset === 0 ? 'Same day as Pay Date' : `${task.offset} working days before Pay Date`;
-                } else if (task.offset === 0) {
-                    descText = `Same day as ${index > 0 ? tasks[index - 1].name : 'previous task'}`;
+                } else if (task.description) {
+                    // Use the stored description that reflects what the user originally specified
+                    descText = task.description;
                 } else {
-                    descText = `${task.offset} working days after ${index > 0 ? tasks[index - 1].name : 'previous task'}`;
+                    // Fallback for tasks without stored descriptions (shouldn't happen)
+                    descText = task.afterPayDate ? `${task.offset} working days after Pay Date` :
+                               task.beforePayDate ? `${task.offset} working days before Pay Date` :
+                               `${task.offset} working days after previous task`;
                 }
 
                 const timeTooltip = task.dueTime ? `Due time: ${formatTimeDisplay(task.dueTime)}` : 'Set due time';
@@ -1520,8 +1563,33 @@
 
         function toggleBeforePayDate(index) {
             if (tasks[index].canBeBeforePayDate) {
+                const wasBeforePayDate = tasks[index].beforePayDate;
                 tasks[index].beforePayDate = !tasks[index].beforePayDate;
+
+                // Update description to reflect the change
+                if (tasks[index].beforePayDate) {
+                    tasks[index].description = tasks[index].offset === 0
+                        ? 'Same day as Pay Date'
+                        : `${tasks[index].offset} working days before Pay Date`;
+                    console.log(`✓ "${tasks[index].name}" now calculated BEFORE Pay Date (${tasks[index].offset} days)`);
+                } else {
+                    // Revert to calculating from previous task
+                    const prevTaskIndex = index - 1;
+                    if (prevTaskIndex > 0) {
+                        const prevTask = tasks[prevTaskIndex];
+                        tasks[index].description = tasks[index].offset === 0
+                            ? `Same day as ${prevTask.name}`
+                            : `${tasks[index].offset} working days after ${prevTask.name}`;
+                    }
+                    console.log(`✓ "${tasks[index].name}" now calculated AFTER previous task (${tasks[index].offset} days)`);
+                }
+
                 renderTasks();
+
+                // Regenerate calendar if one exists
+                if (generatedCalendar.length > 0) {
+                    generateCalendar(true); // Preserve cutoff overrides
+                }
             }
         }
 
@@ -1540,57 +1608,227 @@
             dropdown.value = tasks.length - 1;
         }
 
+        function populateTaskName() {
+            const templateSelect = document.getElementById('newTaskTemplate');
+            const taskNameInput = document.getElementById('newTaskName');
+            const selectedValue = templateSelect.value;
+
+            if (selectedValue === 'custom') {
+                // Show text input for custom task
+                taskNameInput.style.display = 'block';
+                taskNameInput.focus();
+            } else {
+                // Hide text input
+                taskNameInput.style.display = 'none';
+                taskNameInput.value = '';
+            }
+        }
+
+        function sortTasksChronologically() {
+            // Calculate dates for all tasks using a reference pay date
+            // This allows us to sort them chronologically
+            const referenceCutoff = new Date(2025, 0, 1); // Jan 1, 2025
+            const referencePayDate = new Date(2025, 0, 31); // Jan 31, 2025
+            const uniqueCountries = ['US']; // Use US for sorting calculation
+
+            const taskDates = new Map();
+
+            // Cut Off date (index 0)
+            taskDates.set(0, new Date(referenceCutoff));
+
+            // Calculate forward from cut-off for all tasks to maintain the chain
+            // This ensures currentDate advances properly even for tasks that will be recalculated later
+            let currentDate = new Date(referenceCutoff);
+            for (let i = 1; i < tasks.length - 1; i++) {
+                if (tasks[i].fromPrevious) {
+                    // Calculate forward from previous task
+                    currentDate = calculateWorkingDate(currentDate, tasks[i].offset, 'forward', uniqueCountries);
+                    // Only set the date if this isn't a beforePayDate or afterPayDate task
+                    // (those will be recalculated below)
+                    if (!tasks[i].beforePayDate && !tasks[i].afterPayDate) {
+                        taskDates.set(i, new Date(currentDate));
+                    }
+                }
+            }
+
+            // Calculate backward from pay date for beforePayDate tasks (overrides forward calculation)
+            for (let i = 1; i < tasks.length - 1; i++) {
+                if (tasks[i].beforePayDate) {
+                    const taskDate = calculateWorkingDate(referencePayDate, tasks[i].offset, 'backward', uniqueCountries);
+                    taskDates.set(i, new Date(taskDate));
+                }
+            }
+
+            // Calculate forward from pay date for afterPayDate tasks (overrides forward calculation)
+            for (let i = 1; i < tasks.length - 1; i++) {
+                if (tasks[i].afterPayDate) {
+                    const taskDate = calculateWorkingDate(referencePayDate, tasks[i].offset, 'forward', uniqueCountries);
+                    taskDates.set(i, new Date(taskDate));
+                }
+            }
+
+            // Pay Date (last index)
+            taskDates.set(tasks.length - 1, new Date(referencePayDate));
+
+            // Create array of tasks with their calculated dates and original indices
+            const tasksWithDates = tasks.map((task, index) => ({
+                task,
+                date: taskDates.get(index),
+                originalIndex: index
+            }));
+
+            // Separate cut-off, pay date, tasks before pay date, and tasks after pay date
+            const cutOffTask = tasksWithDates[0];
+            const payDateTask = tasksWithDates[tasksWithDates.length - 1];
+            const allIntermediateTasks = tasksWithDates.slice(1, -1);
+
+            // Split intermediate tasks into those BEFORE and AFTER pay date
+            const tasksBeforePayDate = allIntermediateTasks.filter(t => !t.task.afterPayDate);
+            const tasksAfterPayDate = allIntermediateTasks.filter(t => t.task.afterPayDate);
+
+            // Sort each group by calculated date (ascending = chronological order)
+            tasksBeforePayDate.sort((a, b) => a.date - b.date);
+            tasksAfterPayDate.sort((a, b) => a.date - b.date);
+
+            // Rebuild tasks array: Cut Off, tasks before Pay Date, Pay Date, tasks after Pay Date
+            // This ensures tasks marked "after Pay Date" appear AFTER Pay Date in the list and calendar
+            tasks = [
+                cutOffTask.task,
+                ...tasksBeforePayDate.map(t => t.task),
+                payDateTask.task,
+                ...tasksAfterPayDate.map(t => t.task)
+            ];
+
+            console.log('📊 Tasks sorted chronologically - Pay Date at position:', tasks.indexOf(payDateTask.task),
+                        '- Tasks after Pay Date:', tasksAfterPayDate.length);
+        }
+
         function addTask() {
-            const name = document.getElementById('newTaskName').value.trim();
+            const templateSelect = document.getElementById('newTaskTemplate');
+            const taskNameInput = document.getElementById('newTaskName');
+
+            // Get task name from either select or text input
+            let name = '';
+            if (templateSelect.value === 'custom') {
+                name = taskNameInput.value.trim();
+            } else if (templateSelect.value) {
+                name = templateSelect.value;
+            }
+
+            if (!name) {
+                showMessage('Please select a task or enter a custom task name', 'error');
+                return;
+            }
             const offset = parseInt(document.getElementById('newTaskOffset').value);
             const position = document.getElementById('newTaskPosition').value; // "before" or "after"
             const relativeToIndex = parseInt(document.getElementById('newTaskRelativeTo').value);
-
-            if (!name) {
-                showMessage('Please enter a task name', 'error');
-                return;
-            }
 
             if (isNaN(offset) || offset < 0) {
                 showMessage('Please enter a valid number of working days (0 or more)', 'error');
                 return;
             }
 
-            // Determine insertion index
-            let insertIndex;
-            if (position === 'before') {
-                insertIndex = relativeToIndex;
-            } else { // 'after'
-                insertIndex = relativeToIndex + 1;
-            }
+            // Pay Date is always the last task in the array
+            const payDateIndex = tasks.length - 1;
 
-            // Determine description based on position
+            // Determine if this task can be set to "before pay date" (toggle available after adding)
+            const canBeBeforePayDate = (name === 'Payslips Available on Portal' || name === 'Value Date on Bank File');
+
+            // Determine if this task should be calculated BEFORE or AFTER Pay Date
+            const isBeforePayDate = (position === 'before' && relativeToIndex === payDateIndex);
+            const isAfterPayDate = (position === 'after' && relativeToIndex === payDateIndex);
+
+            // Determine properties based on selection
             let description;
-            if (insertIndex === 0) {
-                description = offset === 0 ? 'Same day as start' : `${offset} working days after start`;
+            let afterPayDate = false;
+            let beforePayDate = false;
+            let fromPrevious = true;
+
+            if (isBeforePayDate) {
+                // Task chronologically happens BEFORE Pay Date
+                beforePayDate = true;
+                fromPrevious = false;
+                description = offset === 0 ? 'Same day as Pay Date' : `${offset} working days before Pay Date`;
+                console.log(`📌 Adding task "${name}" that occurs BEFORE Pay Date (${offset} days).`);
+            } else if (isAfterPayDate) {
+                // Task chronologically happens AFTER Pay Date
+                afterPayDate = true;
+                fromPrevious = false;
+                description = offset === 0 ? 'Same day as Pay Date' : `${offset} working days after Pay Date`;
+                console.log(`📌 Adding task "${name}" that occurs AFTER Pay Date (${offset} days).`);
             } else {
-                const prevTask = tasks[insertIndex - 1];
-                description = offset === 0 ? `Same day as ${prevTask.name}` : `${offset} working days after ${prevTask.name}`;
+                // Normal forward-calculated task
+                if (relativeToIndex === 0) {
+                    description = offset === 0 ? 'Same day as start' : `${offset} working days after start`;
+                } else {
+                    const relativeTask = tasks[relativeToIndex];
+                    description = offset === 0 ? `Same day as ${relativeTask.name}` : `${offset} working days after ${relativeTask.name}`;
+                }
             }
 
             // Create new task
             const newTask = {
                 name,
                 offset,
-                fromPrevious: true,
+                fromPrevious,
                 core: false,
                 deletable: true,
-                canBeBeforePayDate: false,
-                beforePayDate: false,
-                description: description,
+                canBeBeforePayDate,
+                beforePayDate,
+                afterPayDate,
+                description,
                 dueTime: ''
             };
 
-            // Insert task at the specified position
+            // Determine insert position based on user's selection
+            let insertIndex;
+            if (beforePayDate || afterPayDate) {
+                // For tasks relative to Pay Date, insert before Pay Date and sort later
+                insertIndex = payDateIndex;
+            } else if (position === 'after') {
+                // Insert right after the selected task
+                insertIndex = relativeToIndex + 1;
+            } else if (position === 'before') {
+                // Insert right before the selected task
+                insertIndex = relativeToIndex;
+            } else {
+                // Default: insert before Pay Date
+                insertIndex = payDateIndex;
+            }
+
+            // Insert task at the calculated position
             tasks.splice(insertIndex, 0, newTask);
 
+            // Update the subsequent task's description if it references the previous task
+            // This maintains a sequential chain when inserting tasks
+            if (!beforePayDate && !afterPayDate && position === 'after') {
+                const nextTaskIndex = insertIndex + 1;
+                // Check if there's a task after the inserted one (not Pay Date)
+                if (nextTaskIndex < tasks.length - 1) {
+                    const nextTask = tasks[nextTaskIndex];
+                    // If the next task was calculated from the previous task, update its description
+                    if (nextTask.fromPrevious && !nextTask.beforePayDate && !nextTask.afterPayDate) {
+                        // Update description to reference the newly inserted task
+                        nextTask.description = nextTask.offset === 0
+                            ? `Same day as ${newTask.name}`
+                            : `${nextTask.offset} working days after ${newTask.name}`;
+                        console.log(`📝 Updated "${nextTask.name}" to reference newly inserted task "${newTask.name}"`);
+                    }
+                }
+            }
+
+            // Only sort if this is a Pay Date relative task (beforePayDate or afterPayDate)
+            // This ensures tasks are positioned correctly relative to Pay Date
+            // For all other tasks, preserve the insertion order specified by the user
+            if (beforePayDate || afterPayDate) {
+                sortTasksChronologically();
+            }
+
             renderTasks();
-            document.getElementById('newTaskName').value = '';
+            // Reset form fields
+            templateSelect.value = '';
+            taskNameInput.value = '';
+            taskNameInput.style.display = 'none';
             document.getElementById('newTaskOffset').value = '1';
             showMessage('Task added successfully', 'success');
         }
@@ -2160,51 +2398,91 @@
                     }
                 }
 
-                // Calculate available working days between cut-off and pay date
-                const availableWorkingDays = countWorkingDaysBetween(cutoffDate, payDate, uniqueCountries);
+                // Find the Pay Date index (may not be at the end anymore due to afterPayDate tasks)
+                const payDateIndex = tasks.findIndex(t => t.name === 'Pay Date');
 
-                // Calculate required working days (all intermediate tasks, NOT including Pay Date)
-                // Pay Date is FIXED, so we only calculate offsets for tasks between cutoff and pay date
+                // Find earliest beforePayDate task to establish the boundary for forward tasks
+                // Forward tasks must complete BEFORE any beforePayDate tasks start
+                const beforePayDateTasks = tasks.filter(t => t.beforePayDate);
+                let forwardTaskDeadline = payDate; // Default: forward tasks can go up to pay date
+
+                if (beforePayDateTasks.length > 0) {
+                    // Find the maximum offset among beforePayDate tasks
+                    const maxBeforePayDateOffset = Math.max(...beforePayDateTasks.map(t => t.offset));
+                    // Calculate the earliest date needed by beforePayDate tasks
+                    const earliestBeforePayDate = calculateWorkingDate(payDate, maxBeforePayDateOffset, 'backward', uniqueCountries);
+                    forwardTaskDeadline = earliestBeforePayDate;
+                    console.log(`📍 Forward tasks must complete by ${earliestBeforePayDate.toDateString()} (${maxBeforePayDateOffset} days before pay date for beforePayDate tasks)`);
+                }
+
+                // Calculate available working days between cut-off and forward task deadline
+                const availableWorkingDays = countWorkingDaysBetween(cutoffDate, forwardTaskDeadline, uniqueCountries);
+
+                // Calculate required working days ONLY for tasks calculated FORWARD from cutoff
+                // Exclude: Cut-Off (index 0), Pay Date, afterPayDate tasks, AND beforePayDate tasks
+                // Note: beforePayDate tasks are calculated backward from pay date, so they don't consume forward timeline
                 let requiredDays = 0;
-                for (let i = 1; i < tasks.length - 1; i++) {  // Exclude last task (Pay Date)
-                    requiredDays += tasks[i].offset;
+                for (let i = 1; i < payDateIndex; i++) {
+                    // Only count tasks that are calculated forward from previous task
+                    if (!tasks[i].afterPayDate && !tasks[i].beforePayDate) {
+                        requiredDays += tasks[i].offset;
+                    }
                 }
 
                 // Debug logging
+                const forwardTasks = tasks.slice(1, payDateIndex).filter(t => !t.afterPayDate && !t.beforePayDate);
+                const tasksAfterPayDate = tasks.filter(t => t.afterPayDate);
                 console.log(`Period ${periodIndex} (${payPeriod.label}):`, {
                     cutoffDate: cutoffDate.toDateString(),
+                    forwardTaskDeadline: forwardTaskDeadline.toDateString(),
                     payDate: payDate.toDateString(),
-                    availableWorkingDays,
-                    requiredDays,
-                    taskOffsets: tasks.slice(1, -1).map((t) => `${t.name}: ${t.offset}`),
-                    note: 'Pay Date is FIXED and not included in requiredDays calculation'
+                    availableWorkingDays: availableWorkingDays,
+                    requiredDays: requiredDays,
+                    forwardTasks: forwardTasks.map((t) => `${t.name}: ${t.offset} days`),
+                    beforePayDateTasks: beforePayDateTasks.map((t) => `${t.name}: ${t.offset} days BEFORE Pay Date (protected)`),
+                    tasksAfterPayDate: tasksAfterPayDate.map((t) => `${t.name}: ${t.offset} days AFTER Pay Date`),
+                    note: beforePayDateTasks.length > 0
+                        ? `Forward tasks must complete by ${forwardTaskDeadline.toDateString()} to avoid collision with beforePayDate tasks`
+                        : 'No beforePayDate tasks - forward tasks can use full timeline to pay date'
                 });
 
                 // Check if we need to adjust
                 const needsAdjustment = requiredDays > availableWorkingDays;
+                const isAtCapacity = requiredDays === availableWorkingDays;
                 let adjustedOffsets = tasks.map(t => t.offset);
                 let adjustedTasks = [];
+
+                if (isAtCapacity && requiredDays > 0) {
+                    console.log(`⚡ Timeline at 100% capacity: ${requiredDays} days required = ${availableWorkingDays} days available (no buffer)`);
+                }
 
                 if (needsAdjustment) {
                     console.log(`⚠️ Adjustment needed! Shortage: ${requiredDays - availableWorkingDays} days`);
 
-                    // CRITICAL: "Before Pay Date" tasks are PROTECTED and never adjusted
-                    // These are critical tasks (e.g., bank file uploads) that must maintain their offset from pay date
+                    // CRITICAL: "Before Pay Date" and "After Pay Date" tasks are PROTECTED and never adjusted
+                    // - beforePayDate tasks: critical tasks (e.g., bank file uploads) that must maintain their offset from pay date
+                    // - afterPayDate tasks: tasks that occur after pay date and don't affect the timeline before pay date
                     // We adjust OTHER tasks instead to make room for these critical timelines
 
                     const shortage = requiredDays - availableWorkingDays;
                     let remaining = shortage;
 
                     // Log protected tasks
-                    const protectedTasks = tasks.filter((t, i) => i > 0 && i < tasks.length - 1 && t.beforePayDate);
+                    const protectedTasks = tasks.filter((t, i) => i > 0 && i < tasks.length - 1 && (t.beforePayDate || t.afterPayDate));
                     if (protectedTasks.length > 0) {
-                        console.log(`🔒 Protected tasks (beforePayDate = true):`);
-                        protectedTasks.forEach(t => console.log(`   - ${t.name}: ${t.offset} days before Pay Date (WILL NOT BE ADJUSTED)`));
+                        console.log(`🔒 Protected tasks (will NOT be adjusted):`);
+                        protectedTasks.forEach(t => {
+                            if (t.beforePayDate) {
+                                console.log(`   - ${t.name}: ${t.offset} days before Pay Date (beforePayDate = true)`);
+                            } else if (t.afterPayDate) {
+                                console.log(`   - ${t.name}: ${t.offset} days after Pay Date (afterPayDate = true)`);
+                            }
+                        });
                     }
 
-                    // Priority 1: Payroll Sign-Off Due (if not a beforePayDate task)
+                    // Priority 1: Payroll Sign-Off Due (if not a protected task)
                     const signOffIndex = tasks.findIndex(t => t.name === 'Payroll Sign-Off Due');
-                    if (remaining > 0 && signOffIndex > 0 && !tasks[signOffIndex].beforePayDate && tasks[signOffIndex].offset > 1) {
+                    if (remaining > 0 && signOffIndex > 0 && !tasks[signOffIndex].beforePayDate && !tasks[signOffIndex].afterPayDate && tasks[signOffIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[signOffIndex].offset - 1);
                         adjustedOffsets[signOffIndex] -= reduce;
                         remaining -= reduce;
@@ -2214,9 +2492,9 @@
                         }
                     }
 
-                    // Priority 2: Feedback from Client (if not a beforePayDate task)
+                    // Priority 2: Feedback from Client (if not a protected task)
                     const feedbackIndex = tasks.findIndex(t => t.name === 'Feedback from Client');
-                    if (remaining > 0 && feedbackIndex > 0 && !tasks[feedbackIndex].beforePayDate && tasks[feedbackIndex].offset > 1) {
+                    if (remaining > 0 && feedbackIndex > 0 && !tasks[feedbackIndex].beforePayDate && !tasks[feedbackIndex].afterPayDate && tasks[feedbackIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[feedbackIndex].offset - 1);
                         adjustedOffsets[feedbackIndex] -= reduce;
                         remaining -= reduce;
@@ -2226,9 +2504,9 @@
                         }
                     }
 
-                    // Priority 3: Payroll Reports Due (if not a beforePayDate task)
+                    // Priority 3: Payroll Reports Due (if not a protected task)
                     const reportsIndex = tasks.findIndex(t => t.name === 'Payroll Reports Due');
-                    if (remaining > 0 && reportsIndex > 0 && !tasks[reportsIndex].beforePayDate && tasks[reportsIndex].offset > 1) {
+                    if (remaining > 0 && reportsIndex > 0 && !tasks[reportsIndex].beforePayDate && !tasks[reportsIndex].afterPayDate && tasks[reportsIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[reportsIndex].offset - 1);
                         adjustedOffsets[reportsIndex] -= reduce;
                         remaining -= reduce;
@@ -2238,23 +2516,24 @@
                         }
                     }
 
-                    // Priority 4: Adjust ALL other tasks EXCEPT beforePayDate tasks
-                    // This ensures critical "Before Pay Date" tasks maintain their required offset
+                    // Priority 4: Adjust ALL other tasks EXCEPT protected tasks (beforePayDate and afterPayDate)
+                    // This ensures critical tasks maintain their required offset from pay date
                     if (remaining > 0) {
                         console.log(`⚠️ Still ${remaining} days short after priority adjustments. Adjusting other non-critical tasks...`);
 
-                        // Collect all adjustable tasks (exclude cutoff, pay date, beforePayDate tasks, and already adjusted)
+                        // Collect all adjustable tasks (exclude cutoff, pay date, protected tasks, and already adjusted)
                         const adjustableIndices = [];
                         for (let i = 1; i < tasks.length - 1; i++) {
                             if (adjustedOffsets[i] > 0 &&
                                 !tasks[i].beforePayDate &&  // NEVER adjust beforePayDate tasks
+                                !tasks[i].afterPayDate &&   // NEVER adjust afterPayDate tasks
                                 !adjustedTasks.includes(tasks[i].name)) {
                                 adjustableIndices.push(i);
                             }
                         }
 
                         if (adjustableIndices.length === 0) {
-                            console.log(`⚠️ No adjustable tasks available! All remaining tasks are critical "beforePayDate" tasks.`);
+                            console.log(`⚠️ No adjustable tasks available! All remaining tasks are protected (beforePayDate or afterPayDate).`);
                         }
 
                         // Reduce offsets proportionally across all adjustable tasks
@@ -2278,8 +2557,8 @@
 
                     if (remaining > 0) {
                         console.log(`⚠️ Still ${remaining} days short after all adjustments!`);
-                        console.log(`   This may be because all remaining tasks are critical "beforePayDate" tasks.`);
-                        console.log(`   Consider: 1) Moving pay date later, 2) Reducing offsets on critical tasks, or 3) Removing non-essential tasks.`);
+                        console.log(`   This may be because all remaining tasks are protected (beforePayDate or afterPayDate).`);
+                        console.log(`   Consider: 1) Moving pay date later, 2) Reducing offsets on protected tasks, or 3) Removing non-essential tasks.`);
                     }
                 }
 
@@ -2298,12 +2577,13 @@
                 });
 
                 // First pass: Generate tasks that are calculated from previous (forward)
-                // We'll handle "before pay date" tasks separately
+                // We'll handle "before pay date" and "after pay date" tasks separately
                 const taskDates = new Map();
                 taskDates.set(0, new Date(cutoffDate));
 
-                for (let i = 1; i < tasks.length - 1; i++) {
-                    if (!tasks[i].beforePayDate) {
+                for (let i = 1; i < tasks.length; i++) {
+                    if (tasks[i].name === 'Pay Date') continue; // Skip Pay Date
+                    if (!tasks[i].beforePayDate && !tasks[i].afterPayDate) {
                         // Calculate forward from previous task
                         const offsetToUse = adjustedOffsets[i];
                         currentDate = calculateWorkingDate(currentDate, offsetToUse, 'forward', uniqueCountries);
@@ -2312,7 +2592,8 @@
                 }
 
                 // Second pass: Generate tasks that are calculated before pay date (backward)
-                for (let i = tasks.length - 2; i >= 1; i--) {
+                for (let i = tasks.length - 1; i >= 1; i--) {
+                    if (tasks[i].name === 'Pay Date') continue; // Skip Pay Date
                     if (tasks[i].beforePayDate) {
                         // Calculate backward from pay date
                         const offsetToUse = adjustedOffsets[i];
@@ -2322,19 +2603,44 @@
                     }
                 }
 
-                // Add all intermediate tasks to periodTasks
-                for (let i = 1; i < tasks.length - 1; i++) {
-                    periodTasks.push({
+                // Third pass: Generate tasks that occur AFTER pay date (forward from pay date)
+                for (let i = 1; i < tasks.length; i++) {
+                    if (tasks[i].name === 'Pay Date') continue; // Skip Pay Date
+                    if (tasks[i].afterPayDate) {
+                        // Calculate forward from pay date
+                        const offsetToUse = adjustedOffsets[i];
+                        const taskDate = calculateWorkingDate(payDate, offsetToUse, 'forward', uniqueCountries);
+                        taskDates.set(i, new Date(taskDate));
+                        console.log(`📅 ${tasks[i].name} calculated ${offsetToUse} working days AFTER pay date: ${taskDate.toDateString()}`);
+                    }
+                }
+
+                // Add all tasks to periodTasks (except Cut-Off and Pay Date which are handled separately)
+                for (let i = 1; i < tasks.length; i++) {
+                    // Skip Pay Date - it's added separately below
+                    if (tasks[i].name === 'Pay Date') continue;
+
+                    // Check if this task was adjusted (either in array OR offset changed)
+                    const wasAdjusted = adjustedTasks.includes(tasks[i].name) ||
+                                       (tasks[i].offset !== adjustedOffsets[i]);
+
+                    if (wasAdjusted) {
+                        console.log(`✓ Period ${periodIndex}: Task "${tasks[i].name}" was adjusted: ${tasks[i].offset}→${adjustedOffsets[i]}`);
+                    }
+
+                    const taskEntry = {
                         period: periodIndex,
                         periodLabel: payPeriod.label,
                         task: tasks[i].name,
                         date: taskDates.get(i),
                         month: payPeriod.month,
                         periodInMonth: payPeriod.periodInMonth,
-                        adjusted: adjustedTasks.includes(tasks[i].name),
+                        adjusted: wasAdjusted,
                         originalOffset: tasks[i].offset,
                         adjustedOffset: adjustedOffsets[i]
-                    });
+                    };
+
+                    periodTasks.push(taskEntry);
                 }
 
                 // Validate chronological order - log warning if tasks are out of order
@@ -2349,17 +2655,18 @@
 
                 // PAY DATE: Always use the ORIGINAL pay date, never calculate it
                 // The pay date only moves if it falls on a weekend/holiday (already handled in getPayDates)
-                const lastTaskIndex = tasks.length - 1;
+                // Find Pay Date task dynamically (it may not be at the end due to afterPayDate tasks)
+                const payDateTaskIndex = tasks.findIndex(t => t.name === 'Pay Date');
                 periodTasks.push({
                     period: periodIndex,
                     periodLabel: payPeriod.label,
-                    task: tasks[lastTaskIndex].name,
+                    task: tasks[payDateTaskIndex].name,
                     date: new Date(payDate),  // Use ORIGINAL pay date, not calculated
                     month: payPeriod.month,
                     periodInMonth: payPeriod.periodInMonth,
                     adjusted: false,  // Pay date never adjusted, it's fixed
-                    originalOffset: tasks[lastTaskIndex].offset,
-                    adjustedOffset: tasks[lastTaskIndex].offset
+                    originalOffset: tasks[payDateTaskIndex].offset,
+                    adjustedOffset: tasks[payDateTaskIndex].offset
                 });
 
                 console.log(`✓ Pay Date set to original: ${payDate.toDateString()}`);
@@ -2448,10 +2755,17 @@
 
                 if (entry.adjusted) {
                     calendarByPeriod[entry.period].hasAdjustment = true;
-                    calendarByPeriod[entry.period].adjustedTasks.push({
+                    const adjustedTask = {
                         name: entry.task,
                         originalOffset: entry.originalOffset,
                         adjustedOffset: entry.adjustedOffset
+                    };
+                    calendarByPeriod[entry.period].adjustedTasks.push(adjustedTask);
+                    console.log(`📊 Adding adjusted task to display:`, {
+                        period: entry.period,
+                        task: adjustedTask.name,
+                        original: adjustedTask.originalOffset,
+                        adjusted: adjustedTask.adjustedOffset
                     });
                 }
             });
@@ -2555,17 +2869,27 @@
                 periodData.holidays = uniqueHolidays.sort((a, b) => a.date - b.date);
             });
 
-            // Build table
+            // Sort tasks chronologically for display (based on dates in first period)
+            // This ensures columns appear in chronological order while preserving workflow logic in the array
+            const firstPeriod = Object.values(calendarByPeriod)[0];
+            const taskOrder = tasks
+                .map(task => ({
+                    name: task.name,
+                    date: firstPeriod && firstPeriod.tasks[task.name] ? firstPeriod.tasks[task.name] : new Date(9999, 0, 1)
+                }))
+                .sort((a, b) => a.date - b.date)
+                .map(t => t.name);
+
             let html = '<table class="calendar-table"><thead><tr><th>Pay Period</th>';
-            tasks.forEach(task => {
-                html += `<th>${task.name}</th>`;
+            taskOrder.forEach(taskName => {
+                html += `<th>${taskName}</th>`;
             });
             html += '<th>Bank Holidays and Processing Adjustments</th></tr></thead><tbody>';
 
             Object.keys(calendarByPeriod).forEach(period => {
                 const periodData = calendarByPeriod[period];
-                const payDateTask = periodData.tasks['Pay Date'];
-                const payDateStr = payDateTask ? formatDateToString(payDateTask) : '';
+                const payDateTaskObj = periodData.tasks['Pay Date'];
+                const payDateStr = payDateTaskObj ? formatDateToString(payDateTaskObj) : '';
 
                 const hasOverride = payDateOverrides[period] !== undefined;
 
@@ -2581,8 +2905,9 @@
                     </div>
                 </td>`;
 
-                tasks.forEach(task => {
-                    const taskDate = periodData.tasks[task.name];
+                taskOrder.forEach(taskName => {
+                    const task = tasks.find(t => t.name === taskName);
+                    const taskDate = periodData.tasks[taskName];
                     if (taskDate) {
                         const dateStr = taskDate.toLocaleDateString('en-GB', {
                             day: 'numeric',
@@ -2635,16 +2960,33 @@
                     `;
                 }).join('');
 
-                // Add adjusted tasks information
+                // Add adjusted tasks information with improved formatting
                 let adjustmentInfo = '';
+                console.log(`🔍 Period ${period} adjustedTasks:`, periodData.adjustedTasks);
                 if (periodData.adjustedTasks && periodData.adjustedTasks.length > 0) {
-                    adjustmentInfo = '<br><strong>⚠️ Adjusted Tasks:</strong><br>' +
+                    console.log(`✓ Displaying ${periodData.adjustedTasks.length} adjusted tasks for period ${period}`);
+                    adjustmentInfo = `<div style="margin-top: 8px; padding: 8px; background-color: #FEF3C7; border-left: 3px solid #F97316; border-radius: 3px;">
+                        <strong style="color: #EA580C;">⚠️ Adjusted Tasks:</strong><br>` +
                         periodData.adjustedTasks.map(adj =>
-                            `${adj.name}: ${adj.originalOffset}→${adj.adjustedOffset} days`
-                        ).join('<br>');
+                            `<span style="color: #292524;">${adj.name}: <strong style="color: #EA580C;">${adj.originalOffset}→${adj.adjustedOffset} days</strong></span>`
+                        ).join('<br>') + '</div>';
+                } else {
+                    console.log(`⚠️ No adjusted tasks to display for period ${period}`);
                 }
 
-                html += `<td>${holidaysList || '-'}${adjustmentInfo}</td></tr>`;
+                const cellContent = `${holidaysList || (adjustmentInfo ? '' : '-')}${adjustmentInfo}`;
+                console.log(`📝 Final cell content for period ${period}:`, {
+                    hasHolidays: holidaysList.length > 0,
+                    hasAdjustments: adjustmentInfo.length > 0,
+                    holidaysListLength: holidaysList.length,
+                    adjustmentInfoLength: adjustmentInfo.length
+                });
+                if (adjustmentInfo.length > 0) {
+                    console.log(`📋 Adjustment HTML for period ${period}:`, adjustmentInfo);
+                    console.log(`📋 Full cell HTML for period ${period}:`, cellContent);
+                }
+
+                html += `<td>${cellContent}</td></tr>`;
             });
 
             html += '</tbody></table>';
@@ -2684,10 +3026,17 @@
 
                 if (entry.adjusted) {
                     calendarByPeriod[entry.period].hasAdjustment = true;
-                    calendarByPeriod[entry.period].adjustedTasks.push({
+                    const adjustedTask = {
                         name: entry.task,
                         originalOffset: entry.originalOffset,
                         adjustedOffset: entry.adjustedOffset
+                    };
+                    calendarByPeriod[entry.period].adjustedTasks.push(adjustedTask);
+                    console.log(`📊 Adding adjusted task to display:`, {
+                        period: entry.period,
+                        task: adjustedTask.name,
+                        original: adjustedTask.originalOffset,
+                        adjusted: adjustedTask.adjustedOffset
                     });
                 }
             });
@@ -2813,9 +3162,19 @@
                 periodData.holidays = uniqueHolidays.sort((a, b) => a.date - b.date);
             });
 
+            // Sort tasks chronologically for Excel (based on dates in first period)
+            const firstPeriod = Object.values(calendarByPeriod)[0];
+            const taskOrder = tasks
+                .map(task => ({
+                    task: task,
+                    date: firstPeriod && firstPeriod.tasks[task.name] ? firstPeriod.tasks[task.name] : new Date(9999, 0, 1)
+                }))
+                .sort((a, b) => a.date - b.date)
+                .map(t => t.task);
+
             // Build data with separate indicator column - include time in header if present
             const tzAbbr = getTimezoneAbbr();
-            const taskHeaders = tasks.map(t => {
+            const taskHeaders = taskOrder.map(t => {
                 if (t.dueTime) {
                     const timeStr = formatTimeDisplay(t.dueTime);
                     return tzAbbr ? `${t.name} at ${timeStr} ${tzAbbr}` : `${t.name} at ${timeStr}`;
@@ -2839,7 +3198,7 @@
 
                 const row = [periodData.label, statusText];
 
-                tasks.forEach(task => {
+                taskOrder.forEach(task => {
                     const taskDate = periodData.tasks[task.name];
                     if (taskDate) {
                         // Format as "Thu, 27th Nov"
@@ -2850,13 +3209,13 @@
                 });
 
                 // Add holidays column with adjustment info (excluding ignored holidays)
-                // Format: Max 2 lines - Line 1: adjustments, Line 2: holidays
+                // Format: Line 1: adjustments (if any), Line 2: holidays (if any)
                 const lines = [];
 
-                // Line 1: Adjusted tasks (if any)
+                // Line 1: Adjusted tasks (if any) - with clear label
                 if (periodData.adjustedTasks && periodData.adjustedTasks.length > 0) {
-                    const adjustments = periodData.adjustedTasks.map(adj =>
-                        `${adj.name}: ${adj.originalOffset}→${adj.adjustedOffset} days`
+                    const adjustments = '⚠️ Adjusted: ' + periodData.adjustedTasks.map(adj =>
+                        `${adj.name} (${adj.originalOffset}→${adj.adjustedOffset} days)`
                     ).join(', ');
                     lines.push(adjustments);
                 }
