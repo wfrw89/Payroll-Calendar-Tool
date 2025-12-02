@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Calendar Generator</title>
+    <title>Payroll Calendar Generator v3.8</title>
 
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -959,12 +959,75 @@
             margin-top: 24px;
             justify-content: flex-end;
         }
+
+        /* Chrome-Style Tab Styles */
+        .tab-container {
+            display: flex;
+            gap: 4px;
+            margin-bottom: -1px;
+        }
+
+        .tab-button {
+            position: relative;
+            padding: 12px 24px;
+            background: #E8EAED;
+            border: none;
+            border-radius: 12px 12px 0 0;
+            color: var(--text-medium);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            box-shadow: none;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #D3D6DA;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: var(--text-dark);
+            box-shadow:
+                0 -2px 4px rgba(0, 0, 0, 0.05),
+                0 0 0 1px rgba(0, 0, 0, 0.05);
+            z-index: 1;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: white;
+        }
+
+        .tab-panel {
+            display: none;
+            background: white;
+            padding: 24px 32px;
+            margin: 0 -32px -32px -32px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .section-divider {
+            border-top: 1px solid var(--border-light);
+            margin: 20px 0;
+            padding-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Payroll Calendar Generator</h1>
+            <h1>Payroll Calendar Generator <span style="font-size: 0.6em; color: var(--primary-purple); font-weight: 600;">v3.8</span></h1>
             <p>Create accurate payroll calendars with bank holidays and working day calculations</p>
         </div>
 
@@ -1058,7 +1121,7 @@
 
         <!-- Payroll Tasks -->
         <div class="card">
-            <div class="card-header">Payroll Tasks</div>
+            <div class="card-header" style="margin-bottom: 16px;">Payroll Tasks</div>
             <p class="help-text" style="margin-bottom: 24px;">
                 Configure your payroll timeline. Set the cut-off date, then each subsequent task is calculated as working days after the previous milestone. If tasks overrun the pay date, the system will automatically adjust intermediate milestones.
             </p>
@@ -1082,6 +1145,13 @@
                     <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
                 </select>
                 <span class="help-text">Select timezone for task due times. Click the clock icon next to each task to set a specific due time.</span>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                <button class="secondary small" onclick="openConstraintsModal()" style="display: flex; align-items: center; gap: 8px;">
+                    <span>Advanced Task Rules</span>
+                    <span id="constraintsBadge" style="display: none; background: var(--warning-orange); color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center;">0</span>
+                </button>
             </div>
 
             <table class="task-table">
@@ -1239,6 +1309,8 @@
         let cutoffOverrides = {}; // Object mapping period index to override cutoff date
         let manualHolidays = {}; // Object mapping period index to { date: Date, name: string }
         let originalCutoffDates = []; // Store original cutoff dates to prevent recalculation when manual holidays are added
+        let taskConstraints = []; // Array of {id, task1Index, task2Index, task1Name, task2Name} objects for same-date prevention
+        let taskDateOverrides = {}; // Object mapping "periodIndex-taskName" to Date for manual constraint resolution
 
         function init() {
             populateCountryDropdowns();
@@ -1487,7 +1559,7 @@
                 tr.innerHTML = `
                     <td>
                         <div class="task-name-cell">
-                            <span>${task.name}</span>
+                            <span>${task.name}${getConstraintIndicator(index)}</span>
                         </div>
                     </td>
                     <td style="text-align: center;">
@@ -1557,6 +1629,38 @@
             const value = parseInt(newValue);
             if (!isNaN(value) && value >= 0) {
                 tasks[index].offset = value;
+
+                // Update the description to reflect the new offset
+                const task = tasks[index];
+                if (task.name !== 'Pay Date' && task.name !== 'Payroll Cut Off') {
+                    if (task.beforePayDate) {
+                        // Task is before Pay Date
+                        task.description = value === 0
+                            ? 'Same day as Pay Date'
+                            : value === 1
+                            ? '1 working day before Pay Date'
+                            : `${value} working days before Pay Date`;
+                    } else if (task.afterPayDate) {
+                        // Task is after Pay Date
+                        task.description = value === 0
+                            ? 'Same day as Pay Date'
+                            : value === 1
+                            ? '1 working day after Pay Date'
+                            : `${value} working days after Pay Date`;
+                    } else {
+                        // Task is calculated from previous task
+                        const prevTaskIndex = index - 1;
+                        if (prevTaskIndex >= 0) {
+                            const prevTask = tasks[prevTaskIndex];
+                            task.description = value === 0
+                                ? `Same day as ${prevTask.name}`
+                                : value === 1
+                                ? `1 working day after ${prevTask.name}`
+                                : `${value} working days after ${prevTask.name}`;
+                        }
+                    }
+                }
+
                 renderTasks();
             }
         }
@@ -1837,6 +1941,9 @@
             // Can't move Payroll Cut Off or tasks above it
             if (index <= 1) return;
 
+            // Update constraints before swap
+            onTaskReordered(index, index - 1);
+
             // Swap with previous task
             [tasks[index], tasks[index - 1]] = [tasks[index - 1], tasks[index]];
             renderTasks();
@@ -1846,6 +1953,9 @@
         function moveTaskDown(index) {
             // Can't move last task (Pay Date) or tasks at/after it
             if (index >= tasks.length - 1) return;
+
+            // Update constraints before swap
+            onTaskReordered(index, index + 1);
 
             // Swap with next task
             [tasks[index], tasks[index + 1]] = [tasks[index + 1], tasks[index]];
@@ -1858,7 +1968,9 @@
             const newName = prompt('Enter new task name:', task.name);
 
             if (newName && newName.trim()) {
-                tasks[index].name = newName.trim();
+                const trimmedName = newName.trim();
+                tasks[index].name = trimmedName;
+                onTaskRenamed(index, trimmedName); // Update constraint names
                 renderTasks();
                 showMessage('Task updated successfully', 'success');
             }
@@ -1866,6 +1978,7 @@
 
         function deleteTask(index) {
             if (confirm('Are you sure you want to delete this task?')) {
+                onTaskDeleted(index); // Update constraints before deletion
                 tasks.splice(index, 1);
                 renderTasks();
                 showMessage('Task deleted successfully', 'success');
@@ -2229,12 +2342,55 @@
             return cutoffDates;
         }
 
+        // Validate task constraints: Check if any constrained task pairs are on the same date
+        // FIX v3.7: Moved to global scope so it can be called from both generateCalendar and renderCalendar
+        function validateTaskConstraints(periodTasks, periodIndex) {
+            const violations = [];
+
+            // Group tasks by period for this validation
+            const periodTaskMap = {};
+            periodTasks.forEach(pt => {
+                if (!periodTaskMap[pt.task]) {
+                    periodTaskMap[pt.task] = pt;
+                }
+            });
+
+            // Check each constraint
+            taskConstraints.forEach(constraint => {
+                const task1Name = constraint.task1Name;
+                const task2Name = constraint.task2Name;
+
+                const task1Data = periodTaskMap[task1Name];
+                const task2Data = periodTaskMap[task2Name];
+
+                if (task1Data && task2Data) {
+                    // Compare dates (ignore time)
+                    const date1 = new Date(task1Data.date).toDateString();
+                    const date2 = new Date(task2Data.date).toDateString();
+
+                    if (date1 === date2) {
+                        violations.push({
+                            task1: task1Name,
+                            task2: task2Name,
+                            date: date1
+                        });
+                        console.log(`⚠️ Constraint violation in period ${periodIndex}: ${task1Name} and ${task2Name} both on ${date1}`);
+                    }
+                }
+            });
+
+            return violations;
+        }
+
         async function generateCalendar(preserveCutoffs = false) {
             // Reset original cutoffs unless we're regenerating with overrides/ignores
             if (!preserveCutoffs) {
                 originalCutoffDates = [];
                 console.log('🔄 Reset original cutoffs (fresh generation)');
             }
+
+            // FIX v3.7: Clear stale violation cache at the start of calendar generation
+            window.constraintViolations = {};
 
             const clientName = document.getElementById('clientName').value.trim();
             const employeeCountry = document.getElementById('employeeCountry').value;
@@ -2480,39 +2636,68 @@
                         });
                     }
 
-                    // Priority 1: Payroll Sign-Off Due (if not a protected task)
+                    // Tier 0: Constraint Awareness - Log constrained tasks
+                    if (taskConstraints.length > 0) {
+                        console.log(`⚡ Task Constraints (${taskConstraints.length}):`);
+                        taskConstraints.forEach(constraint => {
+                            console.log(`   - ${constraint.task1Name} ≠ ${constraint.task2Name} (cannot be on same date)`);
+                        });
+                    }
+
+                    // Priority 1: Payroll Sign-Off Due (if not a protected task and no constraint violation)
                     const signOffIndex = tasks.findIndex(t => t.name === 'Payroll Sign-Off Due');
                     if (remaining > 0 && signOffIndex > 0 && !tasks[signOffIndex].beforePayDate && !tasks[signOffIndex].afterPayDate && tasks[signOffIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[signOffIndex].offset - 1);
-                        adjustedOffsets[signOffIndex] -= reduce;
-                        remaining -= reduce;
-                        if (reduce > 0) {
-                            adjustedTasks.push(tasks[signOffIndex].name);
-                            console.log(`  Reduced ${tasks[signOffIndex].name}: ${tasks[signOffIndex].offset} → ${adjustedOffsets[signOffIndex]}`);
+                        const newOffset = adjustedOffsets[signOffIndex] - reduce;
+
+                        // Check if reduction would violate a constraint
+                        if (!wouldViolateConstraint(signOffIndex, newOffset, adjustedOffsets, tasks)) {
+                            adjustedOffsets[signOffIndex] = newOffset;
+                            remaining -= reduce;
+                            if (reduce > 0) {
+                                adjustedTasks.push(tasks[signOffIndex].name);
+                                console.log(`  Reduced ${tasks[signOffIndex].name}: ${tasks[signOffIndex].offset} → ${adjustedOffsets[signOffIndex]}`);
+                            }
+                        } else {
+                            console.log(`  ⚠️ Skipping ${tasks[signOffIndex].name} reduction (would violate constraint)`);
                         }
                     }
 
-                    // Priority 2: Feedback from Client (if not a protected task)
+                    // Priority 2: Feedback from Client (if not a protected task and no constraint violation)
                     const feedbackIndex = tasks.findIndex(t => t.name === 'Feedback from Client');
                     if (remaining > 0 && feedbackIndex > 0 && !tasks[feedbackIndex].beforePayDate && !tasks[feedbackIndex].afterPayDate && tasks[feedbackIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[feedbackIndex].offset - 1);
-                        adjustedOffsets[feedbackIndex] -= reduce;
-                        remaining -= reduce;
-                        if (reduce > 0) {
-                            adjustedTasks.push(tasks[feedbackIndex].name);
-                            console.log(`  Reduced ${tasks[feedbackIndex].name}: ${tasks[feedbackIndex].offset} → ${adjustedOffsets[feedbackIndex]}`);
+                        const newOffset = adjustedOffsets[feedbackIndex] - reduce;
+
+                        // Check if reduction would violate a constraint
+                        if (!wouldViolateConstraint(feedbackIndex, newOffset, adjustedOffsets, tasks)) {
+                            adjustedOffsets[feedbackIndex] = newOffset;
+                            remaining -= reduce;
+                            if (reduce > 0) {
+                                adjustedTasks.push(tasks[feedbackIndex].name);
+                                console.log(`  Reduced ${tasks[feedbackIndex].name}: ${tasks[feedbackIndex].offset} → ${adjustedOffsets[feedbackIndex]}`);
+                            }
+                        } else {
+                            console.log(`  ⚠️ Skipping ${tasks[feedbackIndex].name} reduction (would violate constraint)`);
                         }
                     }
 
-                    // Priority 3: Payroll Reports Due (if not a protected task)
+                    // Priority 3: Payroll Reports Due (if not a protected task and no constraint violation)
                     const reportsIndex = tasks.findIndex(t => t.name === 'Payroll Reports Due');
                     if (remaining > 0 && reportsIndex > 0 && !tasks[reportsIndex].beforePayDate && !tasks[reportsIndex].afterPayDate && tasks[reportsIndex].offset > 1) {
                         const reduce = Math.min(remaining, tasks[reportsIndex].offset - 1);
-                        adjustedOffsets[reportsIndex] -= reduce;
-                        remaining -= reduce;
-                        if (reduce > 0) {
-                            adjustedTasks.push(tasks[reportsIndex].name);
-                            console.log(`  Reduced ${tasks[reportsIndex].name}: ${tasks[reportsIndex].offset} → ${adjustedOffsets[reportsIndex]}`);
+                        const newOffset = adjustedOffsets[reportsIndex] - reduce;
+
+                        // Check if reduction would violate a constraint
+                        if (!wouldViolateConstraint(reportsIndex, newOffset, adjustedOffsets, tasks)) {
+                            adjustedOffsets[reportsIndex] = newOffset;
+                            remaining -= reduce;
+                            if (reduce > 0) {
+                                adjustedTasks.push(tasks[reportsIndex].name);
+                                console.log(`  Reduced ${tasks[reportsIndex].name}: ${tasks[reportsIndex].offset} → ${adjustedOffsets[reportsIndex]}`);
+                            }
+                        } else {
+                            console.log(`  ⚠️ Skipping ${tasks[reportsIndex].name} reduction (would violate constraint)`);
                         }
                     }
 
@@ -2532,6 +2717,22 @@
                             }
                         }
 
+                        // Sort: prefer non-constrained tasks first
+                        if (taskConstraints.length > 0) {
+                            const constrainedTaskIndices = new Set();
+                            taskConstraints.forEach(c => {
+                                constrainedTaskIndices.add(c.task1Index);
+                                constrainedTaskIndices.add(c.task2Index);
+                            });
+
+                            adjustableIndices.sort((a, b) => {
+                                const aConstrained = constrainedTaskIndices.has(a);
+                                const bConstrained = constrainedTaskIndices.has(b);
+                                if (aConstrained === bConstrained) return 0;
+                                return aConstrained ? 1 : -1; // Non-constrained tasks first
+                            });
+                        }
+
                         if (adjustableIndices.length === 0) {
                             console.log(`⚠️ No adjustable tasks available! All remaining tasks are protected (beforePayDate or afterPayDate).`);
                         }
@@ -2541,12 +2742,19 @@
                             for (let idx of adjustableIndices) {
                                 if (remaining <= 0) break;
                                 if (adjustedOffsets[idx] > 0) {
-                                    adjustedOffsets[idx] -= 1;
-                                    remaining -= 1;
-                                    if (!adjustedTasks.includes(tasks[idx].name)) {
-                                        adjustedTasks.push(tasks[idx].name);
+                                    const newOffset = adjustedOffsets[idx] - 1;
+
+                                    // Check if reduction would violate a constraint
+                                    if (!wouldViolateConstraint(idx, newOffset, adjustedOffsets, tasks)) {
+                                        adjustedOffsets[idx] = newOffset;
+                                        remaining -= 1;
+                                        if (!adjustedTasks.includes(tasks[idx].name)) {
+                                            adjustedTasks.push(tasks[idx].name);
+                                        }
+                                        console.log(`  Reduced ${tasks[idx].name}: ${tasks[idx].offset} → ${adjustedOffsets[idx]}`);
+                                    } else {
+                                        console.log(`  ⚠️ Skipping ${tasks[idx].name} reduction (would violate constraint)`);
                                     }
-                                    console.log(`  Reduced ${tasks[idx].name}: ${tasks[idx].offset} → ${adjustedOffsets[idx]}`);
                                 }
                             }
                             // Remove tasks that have been reduced to 0
@@ -2560,6 +2768,153 @@
                         console.log(`   This may be because all remaining tasks are protected (beforePayDate or afterPayDate).`);
                         console.log(`   Consider: 1) Moving pay date later, 2) Reducing offsets on protected tasks, or 3) Removing non-essential tasks.`);
                     }
+                }
+
+                // Helper function: Determine which of two tasks comes earlier in sequence
+                function isEarlierTask(task1Index, task2Index, tasksArray) {
+                    // For tasks in the same array, lower index = earlier (unless one is beforePayDate)
+                    const task1 = tasksArray[task1Index];
+                    const task2 = tasksArray[task2Index];
+
+                    // Both beforePayDate: compare by proximity to pay date (larger offset = earlier)
+                    if (task1.beforePayDate && task2.beforePayDate) {
+                        return task1.offset > task2.offset;
+                    }
+
+                    // One is beforePayDate, one is forward: forward task is earlier
+                    if (task1.beforePayDate && !task2.beforePayDate && !task2.afterPayDate) return false;
+                    if (task2.beforePayDate && !task1.beforePayDate && !task1.afterPayDate) return true;
+
+                    // Both afterPayDate: compare by offset (smaller offset = earlier, closer to pay date)
+                    if (task1.afterPayDate && task2.afterPayDate) {
+                        return task1.offset < task2.offset;
+                    }
+
+                    // Default: use array position
+                    return task1Index < task2Index;
+                }
+
+                // Helper function: Check if reducing a task's offset would violate a constraint
+                function wouldViolateConstraint(taskIndex, newOffset, currentOffsets, tasksArray) {
+                    // Simplified prediction: check if any constrained task pair would have same offset
+                    for (const constraint of taskConstraints) {
+                        if (constraint.task1Index === taskIndex || constraint.task2Index === taskIndex) {
+                            const otherIndex = constraint.task1Index === taskIndex ? constraint.task2Index : constraint.task1Index;
+
+                            // If adjusting this task would make offsets equal, might cause same-date
+                            const thisNewOffset = (taskIndex === constraint.task1Index || taskIndex === constraint.task2Index) ? newOffset : currentOffsets[taskIndex];
+                            const otherOffset = currentOffsets[otherIndex];
+
+                            // Same offset = likely same date (simplified check)
+                            if (thisNewOffset === otherOffset) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+
+                // Resolve constraint conflict: Move earlier task back to create separation
+                function resolveConstraintConflict(earlierTaskIndex, laterTaskIndex, periodTasks, tasksArray) {
+                    // Resolution principle: Later task keeps its date, earlier task moves back
+                    console.log(`🔧 Resolving constraint: moving earlier task (index ${earlierTaskIndex}) back`);
+
+                    // Increase earlier task's offset by 1 to create separation
+                    if (earlierTaskIndex >= 0 && earlierTaskIndex < tasksArray.length) {
+                        tasksArray[earlierTaskIndex].offset += 1;
+                        console.log(`   ↑ Increased "${tasksArray[earlierTaskIndex].name}" offset to ${tasksArray[earlierTaskIndex].offset}`);
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                // Helper function: Recalculate period dates with current task offsets
+                // Used for initial calculation and after automatic constraint resolution
+                function recalculatePeriodDates(periodIdx, tasksArr, adjOffsets, cutoff, pay, countries, payPeriod, adjustedTasksList = []) {
+                    const periodTasks = [];
+                    let currentDate = new Date(cutoff);
+
+                    // Add cutoff task
+                    periodTasks.push({
+                        period: periodIdx,
+                        periodLabel: payPeriod.label,
+                        task: tasksArr[0].name,
+                        date: new Date(cutoff),
+                        month: payPeriod.month,
+                        periodInMonth: payPeriod.periodInMonth,
+                        adjusted: false
+                    });
+
+                    // Calculate dates using three-pass method
+                    const taskDates = new Map();
+                    taskDates.set(0, new Date(cutoff));
+
+                    // First pass: Forward from previous task
+                    for (let i = 1; i < tasksArr.length; i++) {
+                        if (tasksArr[i].name === 'Pay Date') continue;
+                        if (!tasksArr[i].beforePayDate && !tasksArr[i].afterPayDate) {
+                            const offsetToUse = adjOffsets[i];
+                            currentDate = calculateWorkingDate(currentDate, offsetToUse, 'forward', countries);
+                            taskDates.set(i, new Date(currentDate));
+                        }
+                    }
+
+                    // Second pass: Backward from pay date
+                    for (let i = tasksArr.length - 1; i >= 1; i--) {
+                        if (tasksArr[i].name === 'Pay Date') continue;
+                        if (tasksArr[i].beforePayDate) {
+                            const offsetToUse = adjOffsets[i];
+                            const taskDate = calculateWorkingDate(pay, offsetToUse, 'backward', countries);
+                            taskDates.set(i, new Date(taskDate));
+                        }
+                    }
+
+                    // Third pass: Forward from pay date
+                    for (let i = 1; i < tasksArr.length; i++) {
+                        if (tasksArr[i].name === 'Pay Date') continue;
+                        if (tasksArr[i].afterPayDate) {
+                            const offsetToUse = adjOffsets[i];
+                            const taskDate = calculateWorkingDate(pay, offsetToUse, 'forward', countries);
+                            taskDates.set(i, new Date(taskDate));
+                        }
+                    }
+
+                    // Build periodTasks array
+                    for (let i = 1; i < tasksArr.length; i++) {
+                        if (tasksArr[i].name === 'Pay Date') continue;
+
+                        const wasAdjusted = adjustedTasksList.includes(tasksArr[i].name) ||
+                                          (tasksArr[i].offset !== adjOffsets[i]);
+
+                        periodTasks.push({
+                            period: periodIdx,
+                            periodLabel: payPeriod.label,
+                            task: tasksArr[i].name,
+                            date: taskDates.get(i),
+                            month: payPeriod.month,
+                            periodInMonth: payPeriod.periodInMonth,
+                            adjusted: wasAdjusted,
+                            originalOffset: tasksArr[i].offset,
+                            adjustedOffset: adjOffsets[i]
+                        });
+                    }
+
+                    // Add Pay Date
+                    const payDateTaskIndex = tasksArr.findIndex(t => t.name === 'Pay Date');
+                    periodTasks.push({
+                        period: periodIdx,
+                        periodLabel: payPeriod.label,
+                        task: tasksArr[payDateTaskIndex].name,
+                        date: new Date(pay),
+                        month: payPeriod.month,
+                        periodInMonth: payPeriod.periodInMonth,
+                        adjusted: false,
+                        originalOffset: tasksArr[payDateTaskIndex].offset,
+                        adjustedOffset: tasksArr[payDateTaskIndex].offset
+                    });
+
+                    return periodTasks;
                 }
 
                 // Generate tasks with adjusted offsets
@@ -2671,7 +3026,156 @@
 
                 console.log(`✓ Pay Date set to original: ${payDate.toDateString()}`);
 
+                // Apply manual task date overrides if any exist for this period
+                periodTasks.forEach(taskEntry => {
+                    const overrideKey = `${periodIndex}-${taskEntry.task}`;
+                    if (taskDateOverrides[overrideKey]) {
+                        console.log(`✏️ Applying manual override for "${taskEntry.task}" in period ${periodIndex}`);
+                        taskEntry.date = new Date(taskDateOverrides[overrideKey]);
+                        taskEntry.manuallyOverridden = true; // Flag for visual indicator
+                    }
+                });
+
                 generatedCalendar.push(...periodTasks);
+
+                // Validate task constraints for this period
+                if (taskConstraints.length > 0) {
+                    let violations = validateTaskConstraints(periodTasks, periodIndex);
+                    if (violations.length > 0) {
+                        // Store violations in a global map for display during rendering
+                        if (!window.constraintViolations) {
+                            window.constraintViolations = {};
+                        }
+                        window.constraintViolations[periodIndex] = violations;
+
+                        // NEW v3.2: Attempt automatic resolution
+                        console.log(`🔧 Attempting to resolve ${violations.length} constraint violation(s) in period ${periodIndex}...`);
+
+                        let resolutionAttempts = 0;
+                        const maxAttempts = 5; // Prevent infinite loop
+                        let currentViolations = violations;
+                        const resolvedConstraints = new Set(); // Track which constraints we've tried to resolve
+
+                        while (currentViolations.length > 0 && resolutionAttempts < maxAttempts) {
+                            resolutionAttempts++;
+                            let madeChanges = false;
+
+                            for (const violation of currentViolations) {
+                                // Create a unique key for this constraint (order-independent)
+                                const constraintKey = [violation.task1, violation.task2].sort().join('|');
+
+                                // Skip if we've already tried to resolve this constraint
+                                if (resolvedConstraints.has(constraintKey)) continue;
+
+                                // Find task indices for this violation
+                                const task1Index = tasks.findIndex(t => t.name === violation.task1);
+                                const task2Index = tasks.findIndex(t => t.name === violation.task2);
+
+                                if (task1Index === -1 || task2Index === -1) continue;
+
+                                // Determine protection status - "before pay date" tasks are CRITICAL
+                                const task1Protected = tasks[task1Index].beforePayDate === true;
+                                const task2Protected = tasks[task2Index].beforePayDate === true;
+
+                                let adjustedIndex = -1;
+                                let adjustmentDirection = '';
+
+                                // Business priority: protect "before pay date" tasks at all costs
+                                if (task1Protected && task2Protected) {
+                                    // Both tasks are critical - cannot auto-resolve
+                                    console.log(`   ⚠️ Cannot resolve: Both "${tasks[task1Index].name}" and "${tasks[task2Index].name}" are critical (before pay date)`);
+                                    resolvedConstraints.add(constraintKey);
+                                    continue;
+                                } else if (task1Protected) {
+                                    // Task 1 is critical - adjust task 2 by moving it earlier
+                                    adjustedIndex = task2Index;
+                                    adjustmentDirection = 'decrease';
+                                } else if (task2Protected) {
+                                    // Task 2 is critical - adjust task 1 by moving it earlier
+                                    adjustedIndex = task1Index;
+                                    adjustmentDirection = 'decrease';
+                                } else {
+                                    // Neither protected - adjust the later task in list (move it earlier)
+                                    adjustedIndex = task1Index > task2Index ? task1Index : task2Index;
+                                    adjustmentDirection = 'decrease';
+                                }
+
+                                // Check if adjustment is possible
+                                const originalOffset = adjustedOffsets[adjustedIndex];
+
+                                if (adjustmentDirection === 'decrease') {
+                                    // For "after previous task" tasks, decreasing offset moves them earlier
+                                    if (originalOffset <= 1) {
+                                        console.log(`   ⚠️ Cannot adjust "${tasks[adjustedIndex].name}" - already at minimum offset (1 day)`);
+                                        resolvedConstraints.add(constraintKey);
+                                        continue;
+                                    }
+                                    adjustedOffsets[adjustedIndex] -= 1;
+                                    console.log(`   Attempt ${resolutionAttempts}: Decreased "${tasks[adjustedIndex].name}" offset: ${originalOffset} → ${adjustedOffsets[adjustedIndex]} (moved earlier)`);
+                                } else {
+                                    // Fallback: increase offset (shouldn't normally reach here)
+                                    adjustedOffsets[adjustedIndex] += 1;
+                                    console.log(`   Attempt ${resolutionAttempts}: Increased "${tasks[adjustedIndex].name}" offset: ${originalOffset} → ${adjustedOffsets[adjustedIndex]}`);
+                                }
+
+                                madeChanges = true;
+                                resolvedConstraints.add(constraintKey);
+
+                                // Mark this task as adjusted
+                                if (!adjustedTasks.includes(tasks[adjustedIndex].name)) {
+                                    adjustedTasks.push(tasks[adjustedIndex].name);
+                                }
+                            }
+
+                            if (madeChanges) {
+                                // Recalculate dates for this period with new offsets
+                                const recalculatedTasks = recalculatePeriodDates(
+                                    periodIndex,
+                                    tasks,
+                                    adjustedOffsets,
+                                    cutoffDate,
+                                    payDate,
+                                    uniqueCountries,
+                                    payPeriod,
+                                    adjustedTasks
+                                );
+
+                                // Update periodTasks with recalculated dates
+                                periodTasks.length = 0;
+                                periodTasks.push(...recalculatedTasks);
+
+                                // Validate again
+                                currentViolations = validateTaskConstraints(periodTasks, periodIndex);
+
+                                if (currentViolations.length === 0) {
+                                    console.log(`   ✅ All constraints resolved after ${resolutionAttempts} attempt(s)`);
+                                    delete window.constraintViolations[periodIndex];
+                                } else {
+                                    console.log(`   ⚠️ ${currentViolations.length} violation(s) remaining`);
+                                }
+                            } else {
+                                // No more changes can be made
+                                break;
+                            }
+                        }
+
+                        // FIX v3.7: Always update generatedCalendar with latest task dates,
+                        // even if some violations remain (ensures calendar shows current state)
+                        const startIndex = generatedCalendar.findIndex(t => t.period === periodIndex);
+                        if (startIndex !== -1) {
+                            const endIndex = generatedCalendar.findLastIndex(t => t.period === periodIndex);
+                            generatedCalendar.splice(startIndex, endIndex - startIndex + 1, ...periodTasks);
+                        }
+
+                        if (currentViolations.length > 0) {
+                            console.log(`   ❌ Could not resolve all constraints after ${resolutionAttempts} attempt(s)`);
+                            console.log(`   Suggestion: Manually adjust task offsets, move pay date later, or remove constraints`);
+                            // Keep violations in window.constraintViolations for display
+                        } else {
+                            console.log(`   ✅ All constraints resolved and calendar updated`);
+                        }
+                    }
+                }
 
                 // IMPORTANT: Remove manual holiday immediately after processing this period
                 // This prevents it from affecting subsequent periods
@@ -2748,10 +3252,16 @@
                         periodInMonth: entry.periodInMonth,
                         hasHolidayImpact: false,
                         hasAdjustment: false,
-                        adjustedTasks: []
+                        adjustedTasks: [],
+                        overriddenTasks: [] // Track manually overridden tasks
                     };
                 }
                 calendarByPeriod[entry.period].tasks[entry.task] = entry.date;
+
+                // Track if this task was manually overridden
+                if (entry.manuallyOverridden) {
+                    calendarByPeriod[entry.period].overriddenTasks.push(entry.task);
+                }
 
                 if (entry.adjusted) {
                     calendarByPeriod[entry.period].hasAdjustment = true;
@@ -2894,8 +3404,16 @@
                 const hasOverride = payDateOverrides[period] !== undefined;
 
                 html += `<tr><td>
-                    <div class="period-label">
-                        <div>${periodData.label}</div>
+                    <div class="period-label" style="position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>${periodData.label}</div>
+                            <button class="icon-button" onclick="showUnifiedEditModal(${period})" title="Edit period settings" style="margin-left: 8px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                        </div>
                         ${(periodData.hasHolidayImpact || periodData.hasAdjustment || hasOverride) ?
                             `<div style="font-size: 11px; margin-top: 4px;">
                                 ${periodData.hasHolidayImpact ? '<span class="holiday-indicator"></span>' : ''}
@@ -2918,26 +3436,20 @@
                         // Format time display
                         const timeDisplay = task.dueTime ? `<span class="time-display" style="display: block; font-size: 11px; color: var(--text-medium); margin-top: 2px;">${formatTimeDisplay(task.dueTime)}</span>` : '';
 
-                        // Add pencil icon to Pay Date column (centered below date)
+                        // Pay Date column (centered display, no edit icon - editing moved to period label icon)
                         if (task.name === 'Pay Date') {
-                            html += `<td>
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
-                                    <div style="text-align: center;">
-                                        <span class="date-display">${dateStr}</span>
-                                        <span class="day-display">${dayName}</span>
-                                        ${timeDisplay}
-                                    </div>
-                                    <button class="icon-button" onclick="showPayDateOverride(${period}, '${payDateStr}')" title="Override pay date">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                    </button>
-                                </div>
+                            html += `<td style="text-align: center;">
+                                <span class="date-display">${dateStr}</span>
+                                <span class="day-display">${dayName}</span>
+                                ${timeDisplay}
                             </td>`;
                         } else {
+                            // Check if this task has been manually overridden
+                            const isOverridden = periodData.overriddenTasks && periodData.overriddenTasks.includes(taskName);
+                            const overrideIndicator = isOverridden ? '<span style="color: var(--warning-orange); margin-left: 4px;" title="Date manually overridden">✏️</span>' : '';
+
                             html += `<td>
-                                <span class="date-display">${dateStr}</span>
+                                <span class="date-display">${dateStr}${overrideIndicator}</span>
                                 <span class="day-display">${dayName}</span>
                                 ${timeDisplay}
                             </td>`;
@@ -2974,7 +3486,40 @@
                     console.log(`⚠️ No adjusted tasks to display for period ${period}`);
                 }
 
-                const cellContent = `${holidaysList || (adjustmentInfo ? '' : '-')}${adjustmentInfo}`;
+                // Check for constraint violations in this period
+                // FIX v3.7: Re-validate against CURRENT generatedCalendar data instead of using cached violations
+                let constraintWarning = '';
+                if (taskConstraints.length > 0) {
+                    // Get current period tasks from generatedCalendar
+                    // IMPORTANT: period from Object.keys() is a STRING, but t.period is a NUMBER
+                    const periodNum = parseInt(period);
+                    const currentPeriodTasks = generatedCalendar.filter(t => t.period === periodNum);
+                    console.log(`🔍 Period ${period}: Checking ${taskConstraints.length} constraint(s) against ${currentPeriodTasks.length} tasks`);
+
+                    // Re-validate with current data to avoid stale cache issues
+                    const currentViolations = validateTaskConstraints(currentPeriodTasks, periodNum);
+                    console.log(`🔍 Period ${period}: Found ${currentViolations.length} violation(s)`, currentViolations);
+
+                    if (currentViolations.length > 0) {
+                        constraintWarning = `<div style="margin-top: ${holidaysList || adjustmentInfo ? '12px' : '0'}; padding: 10px; background-color: #FEF3C7; border-left: 3px solid #F97316; border-radius: 3px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <strong style="color: #EA580C;">⚠️ Task Rule Violations:</strong>
+                            <button class="icon-button" onclick="showUnifiedEditModal(${period}, 'taskDates')" title="Edit task dates" style="margin-left: 8px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                        </div>`;
+                        currentViolations.forEach(v => {
+                            constraintWarning += `<span style="color: #292524; font-size: 13px;"><strong>${v.task1}</strong> and <strong>${v.task2}</strong> are both on <strong>${v.date}</strong></span><br>`;
+                        });
+                        constraintWarning += `</div>`;
+                        console.log(`⚠️ Constraint violations displayed for period ${period}:`, currentViolations);
+                    }
+                }
+
+                const cellContent = `${holidaysList || (adjustmentInfo || constraintWarning ? '' : '-')}${adjustmentInfo}${constraintWarning}`;
                 console.log(`📝 Final cell content for period ${period}:`, {
                     hasHolidays: holidaysList.length > 0,
                     hasAdjustments: adjustmentInfo.length > 0,
@@ -3506,6 +4051,7 @@
                 timezone,
                 tasks: tasks.filter(t => !t.core),
                 taskOffsets: tasks.map(t => ({ name: t.name, offset: t.offset, dueTime: t.dueTime || '' })),
+                taskConstraints: taskConstraints,
                 savedDate: new Date().toISOString()
             };
 
@@ -3607,6 +4153,20 @@
                 tasks.push(...config.tasks);
             }
 
+            // Restore task constraints (filter out invalid ones referencing non-existent tasks)
+            if (config.taskConstraints) {
+                taskConstraints = config.taskConstraints.filter(c =>
+                    c.task1Index >= 0 && c.task1Index < tasks.length &&
+                    c.task2Index >= 0 && c.task2Index < tasks.length
+                );
+                if (taskConstraints.length < config.taskConstraints.length) {
+                    console.log(`⚠️ Filtered out ${config.taskConstraints.length - taskConstraints.length} invalid constraint(s)`);
+                }
+                updateConstraintCount();
+            } else {
+                taskConstraints = [];
+            }
+
             renderTasks();
             showMessage('Configuration loaded successfully!', 'success');
         }
@@ -3637,6 +4197,8 @@
 
             tasks = JSON.parse(JSON.stringify(defaultTasks));
             cutoffConfig = { mode: 'offset', offset: 10 };
+            taskConstraints = [];
+            updateConstraintCount();
             renderTasks();
 
             generatedCalendar = [];
@@ -3828,6 +4390,674 @@
             generateCalendar(true); // Preserve cutoffs when removing override
         }
 
+        // ===== CONSTRAINT OVERRIDE MODAL FUNCTIONS =====
+
+        function showConstraintOverrideModal(periodIndex) {
+            periodIndex = parseInt(periodIndex);
+
+            const modal = document.getElementById('constraintOverrideModal');
+            const periodLabel = document.getElementById('constraintOverridePeriodLabel');
+
+            // Find the period label from generated calendar
+            const periodEntry = generatedCalendar.find(e => e.period === periodIndex);
+            if (periodEntry) {
+                periodLabel.textContent = periodEntry.periodLabel;
+            }
+
+            // Populate the task list for this period
+            populateConstraintOverrideModal(periodIndex);
+
+            modal.style.display = 'flex';
+        }
+
+        function closeConstraintOverrideModal() {
+            const modal = document.getElementById('constraintOverrideModal');
+            modal.style.display = 'none';
+        }
+
+        // ========== UNIFIED EDIT MODAL FUNCTIONS (v3.8) ==========
+
+        function showUnifiedEditModal(periodIndex, defaultTab = 'periodSettings') {
+            console.log('🔧 showUnifiedEditModal called with:', { periodIndex, defaultTab });
+
+            // Ensure periodIndex is a number
+            periodIndex = parseInt(periodIndex);
+
+            const modal = document.getElementById('unifiedEditModal');
+            const periodLabel = document.getElementById('unifiedPeriodLabel');
+            const payDateInput = document.getElementById('overridePayDateInput');
+            const cutoffInput = document.getElementById('overrideCutoffInput');
+            const removePeriodBtn = document.getElementById('removePeriodOverrideBtn');
+
+            console.log('🔧 Modal elements found:', {
+                modal: !!modal,
+                periodLabel: !!periodLabel,
+                payDateInput: !!payDateInput,
+                cutoffInput: !!cutoffInput
+            });
+
+            // Find the period label from generated calendar
+            const periodEntry = generatedCalendar.find(e => e.period === periodIndex);
+            if (periodEntry) {
+                periodLabel.textContent = periodEntry.periodLabel;
+
+                // Find the pay date for this period
+                const payDateTask = generatedCalendar.find(e => e.period === periodIndex && e.task === 'Pay Date');
+                if (payDateTask && payDateTask.date) {
+                    payDateInput.value = formatDateForInput(payDateTask.date);
+                }
+
+                // Find the cutoff task for this period
+                const cutoffTask = generatedCalendar.find(e => e.period === periodIndex && e.task === 'Payroll Cut Off');
+                if (cutoffTask && cutoffTask.date) {
+                    cutoffInput.value = formatDateForInput(cutoffTask.date);
+                }
+            }
+
+            // Store periodIndex for later use
+            payDateInput.dataset.periodIndex = periodIndex;
+
+            // Populate manual holiday if one exists for this period
+            const manualHolidayDateInput = document.getElementById('manualHolidayDate');
+            const manualHolidayNameInput = document.getElementById('manualHolidayName');
+
+            if (manualHolidays[periodIndex]) {
+                manualHolidayDateInput.value = formatDateForInput(manualHolidays[periodIndex].date);
+                manualHolidayNameInput.value = manualHolidays[periodIndex].name;
+            } else {
+                manualHolidayDateInput.value = '';
+                manualHolidayNameInput.value = '';
+            }
+
+            // Show/hide remove button based on whether there are overrides
+            const hasOverride = payDateOverrides[periodIndex] !== undefined ||
+                               cutoffOverrides[periodIndex] !== undefined ||
+                               manualHolidays[periodIndex] !== undefined;
+            removePeriodBtn.style.display = hasOverride ? 'inline-block' : 'none';
+
+            // Populate task dates tab
+            populateConstraintOverrideModal(periodIndex);
+
+            // Switch to the appropriate tab
+            switchEditTab(defaultTab);
+
+            // Show modal
+            modal.style.display = 'flex';
+        }
+
+        function closeUnifiedEditModal() {
+            const modal = document.getElementById('unifiedEditModal');
+            modal.style.display = 'none';
+        }
+
+        function switchEditTab(tabName) {
+            // Hide all tab panels
+            document.getElementById('periodSettingsTab').classList.remove('active');
+            document.getElementById('taskDatesTab').classList.remove('active');
+
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab panel
+            if (tabName === 'periodSettings') {
+                document.getElementById('periodSettingsTab').classList.add('active');
+                tabButtons[0].classList.add('active');
+            } else if (tabName === 'taskDates') {
+                document.getElementById('taskDatesTab').classList.add('active');
+                tabButtons[1].classList.add('active');
+            }
+        }
+
+        function applyPeriodSettings() {
+            const periodIndex = parseInt(document.getElementById('overridePayDateInput').dataset.periodIndex);
+            const newPayDate = document.getElementById('overridePayDateInput').value;
+            const newCutoff = document.getElementById('overrideCutoffInput').value;
+            const manualHolidayDate = document.getElementById('manualHolidayDate').value;
+            const manualHolidayName = document.getElementById('manualHolidayName').value;
+
+            let hasChanges = false;
+
+            // Handle pay date override
+            if (newPayDate) {
+                const currentPayDate = generatedCalendar.find(e => e.period === periodIndex && e.task === 'Pay Date');
+                if (currentPayDate && formatDateForInput(currentPayDate.date) !== newPayDate) {
+                    payDateOverrides[periodIndex] = newPayDate;
+                    hasChanges = true;
+                    console.log(`✏️ Pay date override set for period ${periodIndex}: ${newPayDate}`);
+                }
+            }
+
+            // Handle cutoff override
+            if (newCutoff) {
+                const currentCutoff = generatedCalendar.find(e => e.period === periodIndex && e.task === 'Payroll Cut Off');
+                if (currentCutoff && formatDateForInput(currentCutoff.date) !== newCutoff) {
+                    cutoffOverrides[periodIndex] = newCutoff;
+                    hasChanges = true;
+                    console.log(`✏️ Cutoff date override set for period ${periodIndex}: ${newCutoff}`);
+                }
+            }
+
+            // Handle manual bank holiday
+            if (manualHolidayDate && manualHolidayName.trim()) {
+                const holidayDateObj = new Date(manualHolidayDate + 'T12:00:00');
+                manualHolidays[periodIndex] = {
+                    date: holidayDateObj,
+                    name: manualHolidayName.trim()
+                };
+                hasChanges = true;
+                console.log(`🏖️ Manual holiday added for period ${periodIndex}: ${manualHolidayName} on ${manualHolidayDate}`);
+            } else if (!manualHolidayDate && !manualHolidayName.trim() && manualHolidays[periodIndex]) {
+                // Remove manual holiday if both fields are empty
+                delete manualHolidays[periodIndex];
+                hasChanges = true;
+                console.log(`🗑️ Manual holiday removed for period ${periodIndex}`);
+            }
+
+            if (hasChanges) {
+                // FIX v3.7: Clear stale violation cache before regenerating
+                window.constraintViolations = {};
+
+                // Regenerate calendar to apply overrides
+                generateCalendar(true);
+                closeUnifiedEditModal();
+                showMessage('Period settings applied', 'success');
+            } else {
+                closeUnifiedEditModal();
+                showMessage('No changes made', 'info');
+            }
+        }
+
+        function removePeriodOverrides() {
+            const periodIndex = parseInt(document.getElementById('overridePayDateInput').dataset.periodIndex);
+
+            // Remove all period-level overrides
+            delete payDateOverrides[periodIndex];
+            delete cutoffOverrides[periodIndex];
+            delete manualHolidays[periodIndex];
+
+            console.log(`🗑️ All period overrides removed for period ${periodIndex}`);
+
+            // FIX v3.7: Clear stale violation cache before regenerating
+            window.constraintViolations = {};
+
+            // Regenerate calendar
+            generateCalendar(true);
+            closeUnifiedEditModal();
+            showMessage('Period overrides removed', 'success');
+        }
+
+        // ========== END UNIFIED EDIT MODAL FUNCTIONS ==========
+
+        function populateConstraintOverrideModal(periodIndex) {
+            const taskList = document.getElementById('taskOverrideList');
+            const periodTasks = generatedCalendar.filter(e => e.period === periodIndex);
+
+            // Sort tasks chronologically
+            const sortedTasks = [...periodTasks].sort((a, b) => a.date - b.date);
+
+            // Get countries for working day calculations
+            const uniqueCountries = Array.from(new Set([
+                document.getElementById('employeeCountry').value,
+                document.getElementById('providerCountry').value,
+                document.getElementById('clientTeamCountry').value
+            ].filter(c => c)));
+
+            // Build horizontal card layout
+            let html = '<div style="display: flex; gap: 16px; padding: 8px;">';
+
+            sortedTasks.forEach((taskEntry, index) => {
+                // Check if task is protected/critical
+                const taskDef = tasks.find(t => t.name === taskEntry.task);
+                const isBeforePayDate = taskDef && taskDef.beforePayDate === true;
+                const isPayDate = taskEntry.task === 'Pay Date';
+                const isCutOff = taskEntry.task === 'Payroll Cut Off';
+
+                // Critical tasks: before pay date, Pay Date itself, or Payroll Cut Off
+                const isProtected = isBeforePayDate || isPayDate || isCutOff;
+
+                // Check if there's an existing override for this task
+                const overrideKey = `${periodIndex}-${taskEntry.task}`;
+                const hasOverride = taskDateOverrides[overrideKey] !== undefined;
+                const displayDate = hasOverride
+                    ? formatDateForInput(taskDateOverrides[overrideKey])
+                    : formatDateForInput(taskEntry.date);
+
+                // Get existing time if task has it
+                const displayTime = taskDef && taskDef.dueTime ? taskDef.dueTime : '';
+
+                // Calculate working days from previous task
+                let workingDaysInfo = '';
+                if (index > 0) {
+                    const prevTask = sortedTasks[index - 1];
+                    const prevDate = hasOverride && sortedTasks[index - 1].task === prevTask.task
+                        ? (taskDateOverrides[`${periodIndex}-${prevTask.task}`] || prevTask.date)
+                        : prevTask.date;
+                    const currentDate = hasOverride ? taskDateOverrides[overrideKey] : taskEntry.date;
+
+                    const workingDays = countWorkingDaysBetween(new Date(prevDate), new Date(currentDate), uniqueCountries);
+                    workingDaysInfo = `<div class="working-days-display" data-task-name="${taskEntry.task}" style="color: var(--text-medium); font-size: 12px; margin-top: 4px; font-weight: 500;">
+                        ${workingDays} working day${workingDays !== 1 ? 's' : ''}
+                    </div>`;
+                }
+
+                html += `
+                    <div style="flex: 0 0 auto; min-width: 200px; max-width: 220px; border: 1px solid var(--border-light); border-radius: 6px; padding: 12px; background: ${isProtected ? '#FEF3C7' : 'var(--bg-primary)'};">
+                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px; color: var(--text-dark);">
+                            ${taskEntry.task}
+                        </div>
+                        ${isProtected ? '<div style="color: var(--danger-red); font-size: 11px; margin-bottom: 8px;">🔒 CRITICAL</div>' : ''}
+                        ${hasOverride ? '<div style="color: var(--warning-orange); font-size: 11px; margin-bottom: 8px;">✏️ Overridden</div>' : ''}
+
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 11px; color: var(--text-medium); display: block; margin-bottom: 4px;">Date</label>
+                            <input
+                                type="date"
+                                class="task-date-input"
+                                data-task-name="${taskEntry.task}"
+                                data-period-index="${periodIndex}"
+                                data-task-index="${index}"
+                                data-is-before-pay-date="${isBeforePayDate}"
+                                data-original-offset="${taskDef ? taskDef.offset : 0}"
+                                value="${displayDate}"
+                                style="width: 100%; padding: 6px; font-size: 13px; border: 1px solid var(--border-light); border-radius: 4px;">
+                        </div>
+
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 11px; color: var(--text-medium); display: block; margin-bottom: 4px;">Time (Optional)</label>
+                            <input
+                                type="time"
+                                class="task-time-input"
+                                data-task-name="${taskEntry.task}"
+                                data-period-index="${periodIndex}"
+                                value="${displayTime}"
+                                style="width: 100%; padding: 6px; font-size: 13px; border: 1px solid var(--border-light); border-radius: 4px;">
+                        </div>
+
+                        ${workingDaysInfo}
+
+                        ${isProtected ? '<div style="font-size: 10px; color: var(--text-medium); margin-top: 8px; line-height: 1.3;">Critical task timing should not change.</div>' : ''}
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            taskList.innerHTML = html;
+
+            // Add event listeners for real-time working days updates and validation
+            const dateInputs = taskList.querySelectorAll('.task-date-input');
+            dateInputs.forEach(input => {
+                input.addEventListener('change', (e) => {
+                    validateNonWorkingDay(e.target, uniqueCountries);
+                    validateBeforePayDateOffset(e.target);
+                    updateWorkingDaysDisplay(periodIndex, uniqueCountries);
+                    validateTaskOrder();
+                });
+
+                // Run initial validation on existing dates
+                validateNonWorkingDay(input, uniqueCountries);
+                validateBeforePayDateOffset(input);
+            });
+
+            // Run initial order validation
+            validateTaskOrder();
+        }
+
+        function validateNonWorkingDay(input, countries) {
+            const selectedDate = new Date(input.value);
+            const taskName = input.dataset.taskName;
+
+            // Check if date is weekend or bank holiday
+            const isWE = isWeekend(selectedDate, countries);
+            const isNWD = isNonWorkingDay(selectedDate, countries);
+
+            if (isWE || isNWD) {
+                // Find the reason
+                let reason = '';
+                if (isWE) {
+                    const dayName = selectedDate.toLocaleDateString('en-GB', { weekday: 'long' });
+                    reason = `${dayName} (Weekend)`;
+                } else {
+                    // Get holiday name
+                    for (const country of countries) {
+                        const holidayName = getHolidayName(selectedDate, country);
+                        if (holidayName) {
+                            const countryName = document.querySelector(`option[value="${country}"]`)?.textContent || country;
+                            reason = `${holidayName} (${countryName} Bank Holiday)`;
+                            break;
+                        }
+                    }
+                }
+
+                // Show warning in the card
+                const card = input.closest('div[style*="border"]');
+                let warningDiv = card.querySelector('.non-working-day-warning');
+
+                if (!warningDiv) {
+                    warningDiv = document.createElement('div');
+                    warningDiv.className = 'non-working-day-warning';
+                    warningDiv.style.cssText = 'background-color: #FEE2E2; border: 1px solid #DC2626; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 11px; color: #991B1B;';
+                    card.appendChild(warningDiv);
+                }
+
+                warningDiv.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 4px;">⚠️ Non-Working Day</div>
+                    <div style="margin-bottom: 6px;">${reason}</div>
+                    <div style="font-size: 10px; line-height: 1.3;">This date will be used as-is. Tasks normally avoid non-working days.</div>
+                `;
+
+                // Add warning border to input
+                input.style.borderColor = '#DC2626';
+                input.style.borderWidth = '2px';
+            } else {
+                // Remove warning if it exists
+                const card = input.closest('div[style*="border"]');
+                const warningDiv = card.querySelector('.non-working-day-warning');
+                if (warningDiv) {
+                    warningDiv.remove();
+                }
+
+                // Reset input border
+                input.style.borderColor = 'var(--border-light)';
+                input.style.borderWidth = '1px';
+            }
+        }
+
+        function validateTaskOrder() {
+            const taskList = document.getElementById('taskOverrideList');
+            const dateInputs = Array.from(taskList.querySelectorAll('.task-date-input'));
+
+            // Get original indices to maintain task definition order
+            const tasksWithDates = dateInputs.map((input, originalIndex) => ({
+                input,
+                date: new Date(input.value),
+                taskName: input.dataset.taskName,
+                originalIndex
+            }));
+
+            // Check if dates are in order
+            let hasOrderError = false;
+            for (let i = 1; i < tasksWithDates.length; i++) {
+                const prevTask = tasksWithDates[i - 1];
+                const currTask = tasksWithDates[i];
+
+                if (currTask.date < prevTask.date) {
+                    hasOrderError = true;
+
+                    // Highlight both tasks with error
+                    [prevTask.input, currTask.input].forEach(input => {
+                        input.style.borderColor = '#DC2626';
+                        input.style.borderWidth = '2px';
+                        input.style.backgroundColor = '#FEE2E2';
+                    });
+                } else {
+                    // Remove error styling if order is correct
+                    if (!currTask.input.style.borderColor || currTask.input.style.borderColor === 'rgb(220, 38, 38)') {
+                        // Only reset if it was an order error (not a non-working day warning)
+                        const card = currTask.input.closest('div[style*="border"]');
+                        const hasNonWorkingWarning = card ? card.querySelector('.non-working-day-warning') : null;
+                        if (!hasNonWorkingWarning) {
+                            currTask.input.style.borderColor = 'var(--border-light)';
+                            currTask.input.style.borderWidth = '1px';
+                            currTask.input.style.backgroundColor = '';
+                        }
+                    }
+                }
+            }
+
+            // Update or remove order error message
+            const modal = document.getElementById('unifiedEditModal');
+            let errorDiv = modal ? modal.querySelector('.task-order-error') : null;
+
+            if (hasOrderError && modal) {
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.className = 'task-order-error';
+                    errorDiv.style.cssText = 'background-color: #FEE2E2; border: 2px solid #DC2626; border-radius: 6px; padding: 12px; margin: 16px 0; font-size: 13px; color: #991B1B;';
+
+                    const taskListContainer = modal.querySelector('#taskOverrideList');
+                    if (taskListContainer && taskListContainer.parentElement) {
+                        const modalButtons = taskListContainer.parentElement.querySelector('.modal-buttons');
+                        if (modalButtons) {
+                            taskListContainer.parentElement.insertBefore(errorDiv, modalButtons);
+                        }
+                    }
+                }
+
+                if (errorDiv) {
+                    errorDiv.innerHTML = `
+                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 14px;">🚫 Task Order Error</div>
+                        <div style="margin-bottom: 6px;">Tasks must be in chronological order from left to right.</div>
+                        <div style="font-size: 11px; line-height: 1.4; opacity: 0.9;">Please adjust the dates so that each task occurs on or after the previous task. Tasks with red borders are out of order.</div>
+                    `;
+                }
+            } else {
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            }
+
+            return !hasOrderError;
+        }
+
+        function validateBeforePayDateOffset(input) {
+            // Check if this is a "before pay date" task
+            if (input.dataset.isBeforePayDate !== 'true') return;
+
+            const taskName = input.dataset.taskName;
+            const originalOffset = parseInt(input.dataset.originalOffset);
+            const selectedDate = new Date(input.value);
+
+            // Find the pay date for this period
+            const taskList = document.getElementById('taskOverrideList');
+            const payDateInput = Array.from(taskList.querySelectorAll('.task-date-input')).find(
+                inp => inp.dataset.taskName === 'Pay Date'
+            );
+
+            if (!payDateInput) return;
+
+            const payDate = new Date(payDateInput.value);
+
+            // Calculate working days between selected date and pay date
+            const uniqueCountries = Array.from(new Set([
+                document.getElementById('employeeCountry').value,
+                document.getElementById('providerCountry').value,
+                document.getElementById('clientTeamCountry').value
+            ].filter(c => c)));
+
+            const workingDays = countWorkingDaysBetween(selectedDate, payDate, uniqueCountries);
+
+            // Check if it matches the original offset
+            if (workingDays !== originalOffset) {
+                // Show warning in the card
+                const card = input.closest('div[style*="border"]');
+                let warningDiv = card.querySelector('.offset-warning');
+
+                if (!warningDiv) {
+                    warningDiv = document.createElement('div');
+                    warningDiv.className = 'offset-warning';
+                    warningDiv.style.cssText = 'background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 11px; color: #92400E;';
+                    card.appendChild(warningDiv);
+                }
+
+                warningDiv.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 4px;">⚠️ Offset Changed</div>
+                    <div style="margin-bottom: 4px;">Original: ${originalOffset} working days before pay date</div>
+                    <div style="margin-bottom: 6px;">Current: ${workingDays} working days before pay date</div>
+                    <div style="font-size: 10px; line-height: 1.3;">This task was configured with a specific offset from pay date.</div>
+                `;
+
+                // Add warning border to input (orange for warning, not error)
+                input.style.borderColor = '#F59E0B';
+                input.style.borderWidth = '2px';
+            } else {
+                // Remove warning if it exists
+                const card = input.closest('div[style*="border"]');
+                const warningDiv = card.querySelector('.offset-warning');
+                if (warningDiv) {
+                    warningDiv.remove();
+                }
+
+                // Reset input border (unless it has other warnings)
+                const hasNonWorkingWarning = card.querySelector('.non-working-day-warning');
+                if (!hasNonWorkingWarning) {
+                    input.style.borderColor = 'var(--border-light)';
+                    input.style.borderWidth = '1px';
+                }
+            }
+        }
+
+        function updateWorkingDaysDisplay(periodIndex, countries) {
+            const taskList = document.getElementById('taskOverrideList');
+            const dateInputs = Array.from(taskList.querySelectorAll('.task-date-input'));
+
+            // Sort inputs by their current date values
+            const sortedInputs = dateInputs.sort((a, b) => {
+                const dateA = new Date(a.value);
+                const dateB = new Date(b.value);
+                return dateA - dateB;
+            });
+
+            // Update working days display for each task
+            sortedInputs.forEach((input, index) => {
+                if (index === 0) return; // Skip first task (no previous task)
+
+                const prevDate = new Date(sortedInputs[index - 1].value);
+                const currentDate = new Date(input.value);
+                const workingDays = countWorkingDaysBetween(prevDate, currentDate, countries);
+
+                const taskName = input.dataset.taskName;
+                const displayElement = taskList.querySelector(`.working-days-display[data-task-name="${taskName}"]`);
+                if (displayElement) {
+                    displayElement.textContent = `${workingDays} working day${workingDays !== 1 ? 's' : ''}`;
+                }
+            });
+        }
+
+        function applyTaskOverrides() {
+            // First, validate task order
+            const isOrderValid = validateTaskOrder();
+            if (!isOrderValid) {
+                showMessage('Cannot save: Tasks must be in chronological order', 'error');
+                return;
+            }
+
+            // Check for non-working day warnings
+            const taskList = document.getElementById('taskOverrideList');
+            const nonWorkingDayWarnings = taskList.querySelectorAll('.non-working-day-warning');
+
+            if (nonWorkingDayWarnings.length > 0) {
+                const dateInputs = Array.from(taskList.querySelectorAll('.task-date-input'));
+                const nonWorkingTasks = [];
+
+                dateInputs.forEach(input => {
+                    const card = input.closest('div[style*="border"]');
+                    if (card.querySelector('.non-working-day-warning')) {
+                        const taskName = input.dataset.taskName;
+                        const date = new Date(input.value);
+                        const dateStr = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                        nonWorkingTasks.push(`${taskName} (${dateStr})`);
+                    }
+                });
+
+                const taskListText = nonWorkingTasks.map(t => `  • ${t}`).join('\n');
+                const message = `⚠️ Warning: The following tasks are scheduled on non-working days:\n\n${taskListText}\n\nThese dates will be used as-is and may affect your workflow.\n\nDo you want to proceed?`;
+
+                if (!confirm(message)) {
+                    return; // User cancelled
+                }
+            }
+
+            const dateInputs = document.querySelectorAll('#taskOverrideList .task-date-input');
+            const timeInputs = document.querySelectorAll('#taskOverrideList .task-time-input');
+            let hasChanges = false;
+
+            // Process date overrides
+            dateInputs.forEach(input => {
+                const periodIndex = parseInt(input.dataset.periodIndex);
+                const taskName = input.dataset.taskName;
+                const overrideKey = `${periodIndex}-${taskName}`;
+                const newDate = input.value;
+
+                if (!newDate) {
+                    // If empty, remove override
+                    if (taskDateOverrides[overrideKey]) {
+                        delete taskDateOverrides[overrideKey];
+                        hasChanges = true;
+                    }
+                } else {
+                    // Find the original date for this task
+                    const originalTask = generatedCalendar.find(
+                        e => e.period === periodIndex && e.task === taskName
+                    );
+
+                    if (originalTask) {
+                        const originalDateStr = formatDateForInput(originalTask.date);
+
+                        // Only store override if it's different from original
+                        if (newDate !== originalDateStr) {
+                            taskDateOverrides[overrideKey] = new Date(newDate);
+                            hasChanges = true;
+                        } else {
+                            // Same as original, remove any existing override
+                            if (taskDateOverrides[overrideKey]) {
+                                delete taskDateOverrides[overrideKey];
+                                hasChanges = true;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Process time overrides - apply to task definitions
+            timeInputs.forEach(input => {
+                const taskName = input.dataset.taskName;
+                const newTime = input.value;
+                const taskDef = tasks.find(t => t.name === taskName);
+
+                if (taskDef) {
+                    const originalTime = taskDef.dueTime || '';
+                    if (newTime !== originalTime) {
+                        taskDef.dueTime = newTime;
+                        hasChanges = true;
+                    }
+                }
+            });
+
+            if (hasChanges) {
+                // FIX v3.7: Clear stale violation cache before regenerating
+                window.constraintViolations = {};
+
+                // Regenerate calendar to apply overrides
+                generateCalendar(true);
+                showMessage('Task date & time overrides applied', 'success');
+            }
+
+            closeConstraintOverrideModal();
+        }
+
+        function removeAllTaskOverrides() {
+            // Get current period index from the modal
+            const inputs = document.querySelectorAll('#taskOverrideList .task-date-input');
+            if (inputs.length === 0) return;
+
+            const periodIndex = parseInt(inputs[0].dataset.periodIndex);
+
+            // Remove all overrides for this period
+            const keysToRemove = Object.keys(taskDateOverrides).filter(
+                key => key.startsWith(`${periodIndex}-`)
+            );
+
+            keysToRemove.forEach(key => delete taskDateOverrides[key]);
+
+            if (keysToRemove.length > 0) {
+                generateCalendar(true);
+                showMessage('All task overrides removed for this period', 'success');
+            }
+        }
+
+        // ===== END CONSTRAINT OVERRIDE MODAL FUNCTIONS =====
+
         function formatDateForInput(date) {
             // Convert Date to YYYY-MM-DD format for date input
             const year = date.getFullYear();
@@ -3983,54 +5213,247 @@
             showMessage('Standard due time applied to all tasks', 'success');
         }
 
+        // ========== ADVANCED TASK RULES (CONSTRAINTS) FUNCTIONS ==========
+
+        function openConstraintsModal() {
+            populateConstraintDropdowns();
+            renderConstraintsList();
+            updateConstraintCount();
+            document.getElementById('constraintsModal').style.display = 'flex';
+        }
+
+        function closeConstraintsModal() {
+            document.getElementById('constraintsModal').style.display = 'none';
+            document.getElementById('constraintTask1').value = '';
+            document.getElementById('constraintTask2').value = '';
+        }
+
+        function populateConstraintDropdowns() {
+            const task1Select = document.getElementById('constraintTask1');
+            const task2Select = document.getElementById('constraintTask2');
+
+            task1Select.innerHTML = '<option value="">Select task...</option>';
+            task2Select.innerHTML = '<option value="">Select task...</option>';
+
+            tasks.forEach((task, index) => {
+                // Exclude Pay Date and Payroll Cut Off from constraints
+                if (task.name !== 'Pay Date' && task.name !== 'Payroll Cut Off') {
+                    const option1 = document.createElement('option');
+                    option1.value = index;
+                    option1.textContent = task.name;
+                    task1Select.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = index;
+                    option2.textContent = task.name;
+                    task2Select.appendChild(option2);
+                }
+            });
+        }
+
+        function renderConstraintsList() {
+            const container = document.getElementById('constraintsList');
+
+            if (taskConstraints.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 32px; color: var(--text-light);">
+                        <p style="font-size: 15px;">No task rules defined yet</p>
+                        <p style="font-size: 13px; margin-top: 8px;">Add rules below to prevent tasks from being on the same date</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            taskConstraints.forEach(constraint => {
+                html += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: white; border: 1.5px solid var(--border-light); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                            <span style="font-size: 18px;">⚡</span>
+                            <span style="font-size: 14px; color: var(--text-dark);">
+                                <strong>${constraint.task1Name}</strong> ≠ <strong>${constraint.task2Name}</strong>
+                            </span>
+                        </div>
+                        <button class="danger small" onclick="deleteConstraint(${constraint.id})" style="flex-shrink: 0;">Delete</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function addConstraint() {
+            const task1Index = parseInt(document.getElementById('constraintTask1').value);
+            const task2Index = parseInt(document.getElementById('constraintTask2').value);
+
+            // Validation
+            if (isNaN(task1Index) || isNaN(task2Index)) {
+                showMessage('Please select both tasks', 'error');
+                return;
+            }
+
+            if (task1Index === task2Index) {
+                showMessage('Cannot constrain a task with itself', 'error');
+                return;
+            }
+
+            const task1Name = tasks[task1Index].name;
+            const task2Name = tasks[task2Index].name;
+
+            // Check for duplicate (order-independent)
+            const duplicate = taskConstraints.some(c =>
+                (c.task1Index === task1Index && c.task2Index === task2Index) ||
+                (c.task1Index === task2Index && c.task2Index === task1Index)
+            );
+
+            if (duplicate) {
+                showMessage('This constraint already exists', 'error');
+                return;
+            }
+
+            // Add constraint
+            const newConstraint = {
+                id: Date.now(),
+                task1Index: task1Index,
+                task2Index: task2Index,
+                task1Name: task1Name,
+                task2Name: task2Name
+            };
+
+            taskConstraints.push(newConstraint);
+            console.log(`✓ Added constraint: ${task1Name} ≠ ${task2Name}`);
+
+            // Update UI
+            renderConstraintsList();
+            updateConstraintCount();
+            document.getElementById('constraintTask1').value = '';
+            document.getElementById('constraintTask2').value = '';
+            showMessage('Task rule added successfully', 'success');
+        }
+
+        function deleteConstraint(constraintId) {
+            if (confirm('Delete this task rule?')) {
+                const index = taskConstraints.findIndex(c => c.id === constraintId);
+                if (index > -1) {
+                    const constraint = taskConstraints[index];
+                    console.log(`✓ Deleted constraint: ${constraint.task1Name} ≠ ${constraint.task2Name}`);
+                    taskConstraints.splice(index, 1);
+                    renderConstraintsList();
+                    updateConstraintCount();
+                    showMessage('Task rule deleted', 'success');
+                }
+            }
+        }
+
+        function updateConstraintCount() {
+            const badge = document.getElementById('constraintsBadge');
+            if (badge) {
+                if (taskConstraints.length > 0) {
+                    badge.textContent = taskConstraints.length;
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Maintenance functions for constraint integrity
+
+        function onTaskDeleted(taskIndex) {
+            // Remove any constraints involving the deleted task
+            const before = taskConstraints.length;
+            taskConstraints = taskConstraints.filter(c =>
+                c.task1Index !== taskIndex && c.task2Index !== taskIndex
+            );
+
+            // Update indices for remaining tasks (shift down)
+            taskConstraints.forEach(c => {
+                if (c.task1Index > taskIndex) c.task1Index--;
+                if (c.task2Index > taskIndex) c.task2Index--;
+            });
+
+            if (taskConstraints.length < before) {
+                console.log(`✓ Removed ${before - taskConstraints.length} constraint(s) involving deleted task`);
+                updateConstraintCount();
+            }
+        }
+
+        function onTaskReordered(oldIndex, newIndex) {
+            // Update constraint indices when tasks are moved
+            taskConstraints.forEach(c => {
+                if (c.task1Index === oldIndex) {
+                    c.task1Index = newIndex;
+                } else if (c.task1Index === newIndex) {
+                    c.task1Index = oldIndex;
+                }
+
+                if (c.task2Index === oldIndex) {
+                    c.task2Index = newIndex;
+                } else if (c.task2Index === newIndex) {
+                    c.task2Index = oldIndex;
+                }
+            });
+        }
+
+        function onTaskRenamed(taskIndex, newName) {
+            // Update constraint names when a task is renamed
+            taskConstraints.forEach(c => {
+                if (c.task1Index === taskIndex) {
+                    c.task1Name = newName;
+                }
+                if (c.task2Index === taskIndex) {
+                    c.task2Name = newName;
+                }
+            });
+        }
+
+        function getConstraintIndicator(taskIndex) {
+            // Returns HTML for constraint icon if task has constraints
+            const hasConstraint = taskConstraints.some(c =>
+                c.task1Index === taskIndex || c.task2Index === taskIndex
+            );
+
+            if (hasConstraint) {
+                return '<span style="color: var(--warning-orange); font-size: 14px; margin-left: 6px;" title="Has constraint rule">⚡</span>';
+            }
+            return '';
+        }
+
         window.onload = init;
     </script>
 
     <!-- Pay Date Override Modal -->
-    <div id="payDateOverrideModal" class="modal-overlay" style="display: none;">
-        <div class="modal">
-            <h3>Override Pay Date</h3>
-            <p style="color: var(--text-medium); margin-bottom: 20px;">
-                Period: <strong id="overridePeriodLabel"></strong>
-            </p>
-            <div class="form-group">
-                <label for="overridePayDateInput">New Pay Date</label>
-                <input type="date" id="overridePayDateInput" style="width: 100%;">
-                <span class="help-text">Task dates will be adjusted to fit the new pay date while maintaining the cut-off date (unless you also edit cut-off below).</span>
+    <!-- Unified Edit Modal -->
+    <div id="unifiedEditModal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 90%; width: auto; padding-bottom: 0;">
+            <h3 style="margin-bottom: 20px;">Edit Period: <span id="unifiedPeriodLabel"></span></h3>
+
+            <!-- Tab Navigation -->
+            <div class="tab-container">
+                <button class="tab-button active" onclick="switchEditTab('periodSettings')">Period Settings</button>
+                <button class="tab-button" onclick="switchEditTab('taskDates')">Task Dates</button>
             </div>
 
-            <!-- Advanced option to also edit cutoff -->
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light);">
-                <a href="#"
-                   id="showCutoffEditor"
-                   onclick="toggleCutoffEditor(); return false;"
-                   style="color: var(--text-medium); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                    <span id="cutoffEditorToggleIcon">▶</span>
-                    <span>Advanced: Also edit Payroll Cut-Off</span>
-                </a>
-
-                <div id="cutoffEditorSection" style="display: none; margin-top: 12px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="overrideCutoffInput">New Cut-Off Date</label>
-                        <input type="date" id="overrideCutoffInput" style="width: 100%;">
-                        <span class="help-text">Task dates will be recalculated from this cut-off using working day offsets.</span>
-                    </div>
+            <!-- Tab 1: Period Settings -->
+            <div id="periodSettingsTab" class="tab-panel active">
+                <!-- Pay Date Section -->
+                <div class="form-group">
+                    <label for="overridePayDateInput">Pay Date</label>
+                    <input type="date" id="overridePayDateInput" style="width: 100%;">
+                    <span class="help-text">Task dates will be adjusted to fit the new pay date while maintaining the cut-off date (unless you also edit cut-off below).</span>
                 </div>
-            </div>
 
-            <!-- Advanced option to add manual bank holiday -->
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light);">
-                <a href="#"
-                   id="showBankHolidayEditor"
-                   onclick="toggleBankHolidayEditor(); return false;"
-                   style="color: var(--text-medium); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                    <span id="bankHolidayEditorToggleIcon">▶</span>
-                    <span>Advanced: Add Manual Bank Holiday</span>
-                </a>
+                <!-- Cut-Off Date Section -->
+                <div class="form-group section-divider">
+                    <label for="overrideCutoffInput">Cut-Off Date</label>
+                    <input type="date" id="overrideCutoffInput" style="width: 100%;">
+                    <span class="help-text">Task dates will be recalculated from this cut-off using working day offsets.</span>
+                </div>
 
-                <div id="bankHolidayEditorSection" style="display: none; margin-top: 12px;">
+                <!-- Bank Holiday Section -->
+                <div class="section-divider">
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <label for="manualHolidayDate">Bank Holiday Date</label>
+                        <label for="manualHolidayDate">Manual Bank Holiday Date</label>
                         <input type="date" id="manualHolidayDate" style="width: 100%;">
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
@@ -4039,15 +5462,37 @@
                         <span class="help-text">Add a bank holiday that wasn't automatically detected. This will affect working day calculations for this period.</span>
                     </div>
                 </div>
+
+                <!-- Period Settings Buttons -->
+                <div class="modal-buttons" style="justify-content: space-between; margin-top: 20px;">
+                    <button id="removePeriodOverrideBtn" class="danger" onclick="removePeriodOverrides()" style="display: none;">
+                        Remove Override
+                    </button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="secondary" onclick="closeUnifiedEditModal()">Cancel</button>
+                        <button class="primary" onclick="applyPeriodSettings()">Apply Changes</button>
+                    </div>
+                </div>
             </div>
 
-            <div class="modal-buttons" style="justify-content: space-between; margin-top: 20px;">
-                <button id="removeOverrideBtn" class="danger" onclick="removePayDateOverride(parseInt(document.getElementById('overridePayDateInput').dataset.periodIndex)); closePayDateOverride();" style="display: none;">
-                    Remove Override
-                </button>
-                <div style="display: flex; gap: 12px;">
-                    <button class="secondary" onclick="closePayDateOverride()">Cancel</button>
-                    <button class="primary" onclick="applyPayDateOverride()">Apply Override</button>
+            <!-- Tab 2: Task Dates -->
+            <div id="taskDatesTab" class="tab-panel">
+                <p style="color: var(--warning-orange); margin-bottom: 16px; font-size: 13px;">
+                    ⚠️ Manual overrides bypass automatic constraint resolution. Working days are calculated between consecutive tasks.
+                </p>
+                <div id="taskOverrideList" style="max-height: 500px; overflow-x: auto; overflow-y: visible; margin-bottom: 20px;">
+                    <!-- Task cards will be populated here in horizontal layout -->
+                </div>
+
+                <!-- Task Dates Buttons -->
+                <div class="modal-buttons" style="justify-content: space-between; margin-top: 20px;">
+                    <button class="danger" onclick="removeAllTaskOverrides(); closeUnifiedEditModal();" id="removeAllOverridesBtn">
+                        Remove All Overrides
+                    </button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="secondary" onclick="closeUnifiedEditModal()">Cancel</button>
+                        <button class="primary" onclick="applyTaskOverrides()">Apply Overrides</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4109,6 +5554,49 @@
             <div class="modal-buttons" style="margin-top: 20px;">
                 <button class="secondary" onclick="closeStandardTimeInputModal()">Cancel</button>
                 <button class="primary" onclick="applyStandardTime()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Task Rules Modal -->
+    <div id="constraintsModal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 style="margin: 0; font-size: 20px; color: var(--text-dark);">Advanced Task Rules ⚙️</h3>
+                <button class="close-button" onclick="closeConstraintsModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color: var(--text-medium); margin-bottom: 24px; font-size: 14px;">
+                    Prevent specific task pairs from being scheduled on the same date. This ensures critical deliverables have proper spacing.
+                </p>
+
+                <!-- Existing Constraints List -->
+                <div id="constraintsList" style="margin-bottom: 32px;">
+                    <!-- Dynamically populated -->
+                </div>
+
+                <!-- Add New Constraint -->
+                <div style="border-top: 1px solid var(--border-light); padding-top: 24px;">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-dark);">Add New Rule</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px;">Task 1</label>
+                            <select id="constraintTask1" style="width: 100%; padding: 10px; border: 1.5px solid var(--border-light); border-radius: 6px; font-size: 14px;">
+                                <option value="">Select task...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px;">Task 2</label>
+                            <select id="constraintTask2" style="width: 100%; padding: 10px; border: 1.5px solid var(--border-light); border-radius: 6px; font-size: 14px;">
+                                <option value="">Select task...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="primary" onclick="addConstraint()" style="width: 100%;">Add Rule</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary" onclick="closeConstraintsModal()">Close</button>
             </div>
         </div>
     </div>
