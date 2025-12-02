@@ -3342,31 +3342,25 @@
                             }
 
                             if (isInPeriod) {
-                                // Additional filter: Only show holidays between first and last payroll task
-                                const taskDates = Object.values(periodData.tasks);
-                                const minTaskDate = new Date(Math.min(...taskDates));
-                                const maxTaskDate = new Date(Math.max(...taskDates));
+                                // Show all holidays within the pay period boundaries
+                                // (holidays affect working day calculations even if outside task date range)
+                                const countryName = countries.find(c => c.code === country)?.name || country;
+                                const dateStr = holidayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-                                // Only include holiday if it falls between the earliest and latest task
-                                if (holidayDate >= minTaskDate && holidayDate <= maxTaskDate) {
-                                    const countryName = countries.find(c => c.code === country)?.name || country;
-                                    const dateStr = holidayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                                // Mark as impacted - any holiday in the period affects working day calculations
+                                periodData.hasHolidayImpact = true;
 
-                                    // Mark as impacted - any holiday in the period affects working day calculations
-                                    periodData.hasHolidayImpact = true;
+                                // Add indicator if this is a manually added holiday
+                                const manualIndicator = holiday.isManual ? ' [Manual]' : '';
 
-                                    // Add indicator if this is a manually added holiday
-                                    const manualIndicator = holiday.isManual ? ' [Manual]' : '';
-
-                                    periodData.holidays.push({
-                                        date: holidayDate,
-                                        countryCode: country,
-                                        holidayKey: `${country}_${holiday.date}`,
-                                        display: `${dateStr}: ${holiday.name} (${countryName})${manualIndicator}`,
-                                        name: holiday.name,
-                                        isManual: holiday.isManual || false
-                                    });
-                                }
+                                periodData.holidays.push({
+                                    date: holidayDate,
+                                    countryCode: country,
+                                    holidayKey: `${country}_${holiday.date}`,
+                                    display: `${dateStr}: ${holiday.name} (${countryName})${manualIndicator}`,
+                                    name: holiday.name,
+                                    isManual: holiday.isManual || false
+                                });
                             }
                         });
                     });
@@ -3669,31 +3663,25 @@
                             }
 
                             if (isInPeriod) {
-                                // Additional filter: Only show holidays between first and last payroll task
-                                const taskDates = Object.values(periodData.tasks);
-                                const minTaskDate = new Date(Math.min(...taskDates));
-                                const maxTaskDate = new Date(Math.max(...taskDates));
+                                // Show all holidays within the pay period boundaries
+                                // (holidays affect working day calculations even if outside task date range)
+                                const countryName = countries.find(c => c.code === country)?.name || country;
+                                const dateStr = holidayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-                                // Only include holiday if it falls between the earliest and latest task
-                                if (holidayDate >= minTaskDate && holidayDate <= maxTaskDate) {
-                                    const countryName = countries.find(c => c.code === country)?.name || country;
-                                    const dateStr = holidayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                                // Mark as impacted - any holiday in the period affects working day calculations
+                                periodData.hasHolidayImpact = true;
 
-                                    // Mark as impacted - any holiday in the period affects working day calculations
-                                    periodData.hasHolidayImpact = true;
+                                // Add indicator if this is a manually added holiday
+                                const manualIndicator = holiday.isManual ? ' [Manual]' : '';
 
-                                    // Add indicator if this is a manually added holiday
-                                    const manualIndicator = holiday.isManual ? ' [Manual]' : '';
-
-                                    periodData.holidays.push({
-                                        date: holidayDate,
-                                        countryCode: country,
-                                        holidayKey: `${country}_${holiday.date}`,
-                                        display: `${dateStr}: ${holiday.name} (${countryName})${manualIndicator}`,
-                                        name: holiday.name,
-                                        isManual: holiday.isManual || false
-                                    });
-                                }
+                                periodData.holidays.push({
+                                    date: holidayDate,
+                                    countryCode: country,
+                                    holidayKey: `${country}_${holiday.date}`,
+                                    display: `${dateStr}: ${holiday.name} (${countryName})${manualIndicator}`,
+                                    name: holiday.name,
+                                    isManual: holiday.isManual || false
+                                });
                             }
                         });
                     });
