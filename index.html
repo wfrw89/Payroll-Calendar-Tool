@@ -2190,6 +2190,24 @@
             let current = new Date(date);
             const original = new Date(date);
             let moveCount = 0;
+            let adjustmentReason = null;
+
+            // Track what caused the adjustment (check original date)
+            if (isWeekend(original, relevantCountries) || isNonWorkingDay(original, relevantCountries)) {
+                if (isNonWorkingDay(original, relevantCountries)) {
+                    adjustmentReason = {
+                        type: 'holiday',
+                        date: new Date(original),
+                        holidayName: getHolidayName(original, relevantCountries)
+                    };
+                } else {
+                    adjustmentReason = {
+                        type: 'weekend',
+                        date: new Date(original)
+                    };
+                }
+            }
+
             while (isWeekend(current, relevantCountries) || isNonWorkingDay(current, relevantCountries)) {
                 current.setDate(current.getDate() - 1);
                 moveCount++;
@@ -2197,7 +2215,14 @@
             if (moveCount > 0) {
                 console.log(`  Moved ${original.toDateString()} → ${current.toDateString()} (${moveCount} days back)`);
             }
-            return current;
+
+            return {
+                date: current,
+                wasAdjusted: moveCount > 0,
+                originalDate: moveCount > 0 ? original : null,
+                daysShifted: moveCount,
+                reason: adjustmentReason
+            };
         }
 
         function getPayDates(frequency, year, config, employeeCountryArray) {
@@ -2217,9 +2242,13 @@
                         }
                     }
                     // Pay date only moves for weekends/holidays in EMPLOYEE country
-                    payDate = moveToPriorWorkingDay(payDate, employeeCountryArray);
+                    const adjustment = moveToPriorWorkingDay(payDate, employeeCountryArray);
                     payDates.push({
-                        date: payDate,
+                        date: adjustment.date,
+                        originalDate: adjustment.originalDate,
+                        wasAdjusted: adjustment.wasAdjusted,
+                        adjustmentReason: adjustment.reason,
+                        daysShifted: adjustment.daysShifted,
                         label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year}`,
                         month: month
                     });
@@ -2234,10 +2263,14 @@
                         payDate1 = new Date(year, month + 1, 0);
                     }
                     // Pay date only moves for weekends/holidays in EMPLOYEE country
-                    payDate1 = moveToPriorWorkingDay(payDate1, employeeCountryArray);
+                    const adjustment1 = moveToPriorWorkingDay(payDate1, employeeCountryArray);
 
                     payDates.push({
-                        date: payDate1,
+                        date: adjustment1.date,
+                        originalDate: adjustment1.originalDate,
+                        wasAdjusted: adjustment1.wasAdjusted,
+                        adjustmentReason: adjustment1.reason,
+                        daysShifted: adjustment1.daysShifted,
                         label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year} P1`,
                         month: month,
                         periodInMonth: 1
@@ -2253,10 +2286,14 @@
                         }
                     }
                     // Pay date only moves for weekends/holidays in EMPLOYEE country
-                    payDate2 = moveToPriorWorkingDay(payDate2, employeeCountryArray);
+                    const adjustment2 = moveToPriorWorkingDay(payDate2, employeeCountryArray);
 
                     payDates.push({
-                        date: payDate2,
+                        date: adjustment2.date,
+                        originalDate: adjustment2.originalDate,
+                        wasAdjusted: adjustment2.wasAdjusted,
+                        adjustmentReason: adjustment2.reason,
+                        daysShifted: adjustment2.daysShifted,
                         label: `${new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long' })} ${year} P2`,
                         month: month,
                         periodInMonth: 2
@@ -2270,11 +2307,15 @@
                 while (currentDate.getFullYear() === year) {
                     let payDate = new Date(currentDate);
                     // Pay date only moves for weekends/holidays in EMPLOYEE country
-                    payDate = moveToPriorWorkingDay(payDate, employeeCountryArray);
+                    const adjustment = moveToPriorWorkingDay(payDate, employeeCountryArray);
                     payDates.push({
-                        date: payDate,
-                        label: `Period ${payPeriodNum} (${payDate.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })})`,
-                        month: payDate.getMonth()
+                        date: adjustment.date,
+                        originalDate: adjustment.originalDate,
+                        wasAdjusted: adjustment.wasAdjusted,
+                        adjustmentReason: adjustment.reason,
+                        daysShifted: adjustment.daysShifted,
+                        label: `Period ${payPeriodNum} (${adjustment.date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })})`,
+                        month: adjustment.date.getMonth()
                     });
                     currentDate.setDate(currentDate.getDate() + increment);
                     payPeriodNum++;
@@ -2305,7 +2346,7 @@
                         if (cutoffDate.getMonth() !== month) {
                             cutoffDate = new Date(year, month + 1, 0);
                         }
-                        cutoffDate = moveToPriorWorkingDay(cutoffDate, relevantCountries);
+                        cutoffDate = moveToPriorWorkingDay(cutoffDate, relevantCountries).date;
                         cutoffDates.push(cutoffDate);
                     }
                 } else if (frequency === 'semi-monthly') {
@@ -2314,14 +2355,14 @@
                         if (cutoff1.getMonth() !== month) {
                             cutoff1 = new Date(year, month + 1, 0);
                         }
-                        cutoff1 = moveToPriorWorkingDay(cutoff1, relevantCountries);
+                        cutoff1 = moveToPriorWorkingDay(cutoff1, relevantCountries).date;
                         cutoffDates.push(cutoff1);
 
                         let cutoff2 = new Date(year, month, parseInt(cutoffConfig.cutoffSecondDay));
                         if (cutoff2.getMonth() !== month) {
                             cutoff2 = new Date(year, month + 1, 0);
                         }
-                        cutoff2 = moveToPriorWorkingDay(cutoff2, relevantCountries);
+                        cutoff2 = moveToPriorWorkingDay(cutoff2, relevantCountries).date;
                         cutoffDates.push(cutoff2);
                     }
                 } else {
@@ -2333,7 +2374,7 @@
                             cutoffDate.setDate(cutoffDate.getDate() - 1);
                         }
 
-                        cutoffDate = moveToPriorWorkingDay(cutoffDate, relevantCountries);
+                        cutoffDate = moveToPriorWorkingDay(cutoffDate, relevantCountries).date;
                         cutoffDates.push(cutoffDate);
                     });
                 }
@@ -3021,7 +3062,12 @@
                     periodInMonth: payPeriod.periodInMonth,
                     adjusted: false,  // Pay date never adjusted, it's fixed
                     originalOffset: tasks[payDateTaskIndex].offset,
-                    adjustedOffset: tasks[payDateTaskIndex].offset
+                    adjustedOffset: tasks[payDateTaskIndex].offset,
+                    // Store pay date adjustment info for display
+                    payDateWasAdjusted: payPeriod.wasAdjusted,
+                    payDateOriginal: payPeriod.originalDate,
+                    payDateAdjustmentReason: payPeriod.adjustmentReason,
+                    payDateDaysShifted: payPeriod.daysShifted
                 });
 
                 console.log(`✓ Pay Date set to original: ${payDate.toDateString()}`);
@@ -3253,7 +3299,8 @@
                         hasHolidayImpact: false,
                         hasAdjustment: false,
                         adjustedTasks: [],
-                        overriddenTasks: [] // Track manually overridden tasks
+                        overriddenTasks: [], // Track manually overridden tasks
+                        payDateAdjustment: null // Store pay date adjustment info if shifted due to holiday
                     };
                 }
                 calendarByPeriod[entry.period].tasks[entry.task] = entry.date;
@@ -3261,6 +3308,16 @@
                 // Track if this task was manually overridden
                 if (entry.manuallyOverridden) {
                     calendarByPeriod[entry.period].overriddenTasks.push(entry.task);
+                }
+
+                // Store pay date adjustment info if this is the Pay Date task and it was adjusted
+                if (entry.task === 'Pay Date' && entry.payDateWasAdjusted) {
+                    calendarByPeriod[entry.period].payDateAdjustment = {
+                        originalDate: entry.payDateOriginal,
+                        adjustedDate: entry.date,
+                        daysShifted: entry.payDateDaysShifted,
+                        reason: entry.payDateAdjustmentReason
+                    };
                 }
 
                 if (entry.adjusted) {
@@ -3453,6 +3510,34 @@
                     }
                 });
 
+                // Display pay date adjustment ONLY if it was due to a bank holiday (not weekends)
+                let payDateAdjustmentDisplay = '';
+                if (periodData.payDateAdjustment && periodData.payDateAdjustment.reason && periodData.payDateAdjustment.reason.type === 'holiday') {
+                    const adj = periodData.payDateAdjustment;
+                    const originalDateStr = adj.originalDate.toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short'
+                    });
+                    const adjustedDateStr = adj.adjustedDate.toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short'
+                    });
+                    const reasonText = ` due to ${adj.reason.holidayName}`;
+
+                    payDateAdjustmentDisplay = `
+                        <div style="background: #FFF4E6; border-left: 4px solid #FF9800; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-size: 18px;">⚠️</span>
+                                <strong style="color: #E65100;">Pay Date Adjusted</strong>
+                            </div>
+                            <div style="color: var(--text-medium); font-size: 13px; line-height: 1.4;">
+                                Originally scheduled for <strong>${originalDateStr}</strong>,
+                                moved to <strong>${adjustedDateStr}</strong>${reasonText}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 const holidaysList = periodData.holidays.map(h => {
                     const isIgnored = ignoredHolidays.includes(h.holidayKey);
                     return `
@@ -3513,7 +3598,7 @@
                     }
                 }
 
-                const cellContent = `${holidaysList || (adjustmentInfo || constraintWarning ? '' : '-')}${adjustmentInfo}${constraintWarning}`;
+                const cellContent = `${payDateAdjustmentDisplay}${holidaysList || (adjustmentInfo || constraintWarning || payDateAdjustmentDisplay ? '' : '-')}${adjustmentInfo}${constraintWarning}`;
                 console.log(`📝 Final cell content for period ${period}:`, {
                     hasHolidays: holidaysList.length > 0,
                     hasAdjustments: adjustmentInfo.length > 0,
@@ -3558,7 +3643,8 @@
                         periodInMonth: entry.periodInMonth,
                         hasHolidayImpact: false,
                         hasAdjustment: false,
-                        adjustedTasks: []
+                        adjustedTasks: [],
+                        payDateAdjustment: null // Store pay date adjustment info if shifted due to holiday
                     };
                 }
                 calendarByPeriod[entry.period].tasks[entry.task] = entry.date;
