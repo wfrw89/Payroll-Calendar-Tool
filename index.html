@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Calendar Generator v4.0</title>
+    <title>Payroll Calendar Generator v5.1</title>
 
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -18,23 +18,52 @@
         }
 
         :root {
-            --primary-purple: #6B69D6;
-            --primary-purple-light: #8B89E5;
-            --success-teal: #0FA47F;
-            --success-teal-light: #14B98F;
-            --warning-yellow: #F59E0B;
-            --warning-orange: #F97316;
-            --danger-red: #eb5757;
-            --text-dark: #37352f;
-            --text-medium: #787774;
-            --text-light: #9B9A97;
-            --bg-main: #fafafa;
-            --bg-card: #ffffff;
-            --border-light: #e5e5e4;
-            --border-medium: #d3d3d1;
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            /* Vistra Design System Tokens */
+
+            /* Accent Colors */
+            --primary-purple: #001A5B;
+            --primary-purple-light: #0909B7;
+            --accent-light: #97E3FF;
+
+            /* Text Colors */
+            --text-dark: #2A2A2A;
+            --text-medium: #68696C;
+            --text-light: #A6A9AD;
+            --text-inverse: #FFFFFF;
+
+            /* Background Colors */
+            --bg-main: #EFF3F8;
+            --bg-card: #FFFFFF;
+            --bg-bold: #E4E8EF;
+
+            /* Stroke/Border Colors */
+            --border-light: #E4E8EF;
+            --border-medium: #A6A9AD;
+            --stroke-focus: #3F80FF;
+
+            /* Status Colors */
+            --success-teal: #039409;
+            --success-teal-light: #D2FAD2;
+            --warning-yellow: #FF7A00;
+            --warning-orange: #FF7A00;
+            --warning-light: #FFEFB6;
+            --danger-red: #DA3237;
+            --danger-light: #FFEAEA;
+            --info-color: #3F80FF;
+            --info-light: #C9E4FF;
+
+            /* Reactive States */
+            --hover-state: rgba(0, 26, 91, 0.15);
+            --pressed-state: rgba(0, 26, 91, 0.25);
+
+            /* Shadow - Vistra single token */
+            --shadow-sm: 0px 6px 14px -6px rgba(24, 39, 75, 0.12), 0px 10px 32px -4px rgba(24, 39, 75, 0.10);
+            --shadow-md: 0px 6px 14px -6px rgba(24, 39, 75, 0.12), 0px 10px 32px -4px rgba(24, 39, 75, 0.10);
+            --shadow-lg: 0px 6px 14px -6px rgba(24, 39, 75, 0.12), 0px 10px 32px -4px rgba(24, 39, 75, 0.10);
+
+            /* Disabled States */
+            --bg-disabled-light: #F8FAFC;
+            --bg-disabled-bold: #A6A9AD;
         }
 
         @keyframes fadeIn {
@@ -72,21 +101,20 @@
         }
 
         .header h1 {
-            font-size: 44px;
-            font-weight: 700;
-            color: var(--text-dark);
+            font-size: 32px;
+            font-weight: 400;
+            color: var(--primary-purple);
             margin-bottom: 12px;
-            letter-spacing: -0.04em;
-            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-purple-light) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            letter-spacing: 0;
+            line-height: 40px;
         }
 
         .header p {
             color: var(--text-medium);
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 400;
+            line-height: 24px;
+            letter-spacing: 0.01em;
         }
 
         .card {
@@ -102,26 +130,26 @@
 
         .card:hover {
             box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
         }
 
         .card-header {
-            font-size: 19px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 500;
             color: var(--text-dark);
             margin-bottom: 28px;
             padding-bottom: 18px;
-            border-bottom: 2px solid #f1f1f0;
+            border-bottom: 2px solid var(--border-light);
             display: flex;
             align-items: center;
             gap: 12px;
+            line-height: 26px;
         }
 
         .card-header::before {
             content: '';
             width: 5px;
             height: 24px;
-            background: linear-gradient(180deg, var(--primary-purple) 0%, var(--primary-purple-light) 100%);
+            background: var(--primary-purple);
             border-radius: 3px;
         }
 
@@ -140,8 +168,9 @@
 
         .form-group label {
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 400;
             color: var(--text-dark);
+            line-height: 16px;
         }
 
         .form-group input:not([type="checkbox"]),
@@ -149,13 +178,14 @@
             padding: 12px 16px;
             border: 1.5px solid var(--border-light);
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 14px;
             font-family: inherit;
             background: var(--bg-card);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-dark);
             height: 48px;
-            line-height: 1.5;
+            line-height: 22px;
+            letter-spacing: 0.01em;
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
@@ -163,7 +193,7 @@
         }
 
         .form-group select {
-            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2368696C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 16px center;
             padding-right: 40px;
@@ -172,9 +202,8 @@
         .form-group input:not([type="checkbox"]):focus,
         .form-group select:focus {
             outline: none;
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 0 4px rgba(107, 105, 214, 0.1);
-            transform: translateY(-1px);
+            border-color: var(--stroke-focus);
+            box-shadow: 0 0 0 4px rgba(63, 128, 255, 0.15);
         }
 
         .form-group input:not([type="checkbox"]):hover:not(:focus),
@@ -193,7 +222,7 @@
         }
 
         .form-group input[type="checkbox"]:focus {
-            outline: 2px solid var(--primary-purple);
+            outline: 2px solid var(--stroke-focus);
             outline-offset: 2px;
         }
 
@@ -202,9 +231,10 @@
         }
 
         .help-text {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-medium);
             margin-top: 4px;
+            line-height: 16px;
         }
 
         .button-group {
@@ -219,7 +249,7 @@
             border: none;
             border-radius: 8px;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 400;
             cursor: pointer;
             font-family: inherit;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -227,6 +257,7 @@
             align-items: center;
             gap: 8px;
             letter-spacing: 0.01em;
+            line-height: 16px;
         }
 
         button:active {
@@ -234,55 +265,61 @@
         }
 
         button.primary {
-            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-purple-light) 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(107, 105, 214, 0.25);
+            background: var(--primary-purple);
+            color: var(--text-inverse);
+            box-shadow: var(--shadow-sm);
         }
 
         button.primary:hover {
+            background: var(--primary-purple);
+            filter: brightness(1.15);
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(107, 105, 214, 0.35);
         }
 
         button.secondary {
-            background: #f1f1f0;
+            background: var(--bg-bold);
             color: var(--text-dark);
+            border: 1px solid var(--border-light);
         }
 
         button.secondary:hover {
-            background: #e5e5e4;
+            background: var(--hover-state);
             transform: translateY(-1px);
         }
 
         button.success {
-            background: linear-gradient(135deg, var(--success-teal) 0%, var(--success-teal-light) 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(15, 164, 127, 0.25);
+            background: var(--success-teal);
+            color: var(--text-inverse);
+            box-shadow: var(--shadow-sm);
         }
 
         button.success:hover {
+            opacity: 0.9;
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(15, 164, 127, 0.35);
         }
 
         button.danger {
             background: var(--danger-red);
-            color: white;
+            color: var(--text-inverse);
         }
 
         button.danger:hover {
-            background: #d13636;
+            opacity: 0.9;
             transform: translateY(-1px);
         }
 
         button.small {
-            padding: 7px 16px;
-            font-size: 13px;
+            padding: 8px 16px;
+            font-size: 12px;
+            line-height: 16px;
         }
 
         button:disabled {
-            opacity: 0.5;
+            background: var(--bg-disabled-light);
+            color: var(--text-light);
             cursor: not-allowed;
+            box-shadow: none;
+            opacity: 1;
         }
 
         .task-table {
@@ -298,21 +335,23 @@
         .task-table th {
             text-align: left;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 400;
             color: var(--text-medium);
             text-transform: uppercase;
             letter-spacing: 0.8px;
             padding: 16px 18px;
-            background: #fafafa;
+            background: var(--bg-main);
             border-bottom: 2px solid var(--border-light);
+            line-height: 16px;
         }
 
         .task-table td {
             padding: 18px;
-            border-bottom: 1px solid #f7f7f7;
-            font-size: 15px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 14px;
             vertical-align: middle;
-            background: white;
+            background: var(--bg-card);
+            line-height: 22px;
         }
 
         .task-table tr:last-child td {
@@ -320,28 +359,28 @@
         }
 
         .task-table tr:hover td {
-            background: #fafafa;
+            background: var(--bg-main);
         }
 
         .task-row.core td {
-            background: #f0f9f7;
+            background: var(--success-teal-light);
         }
 
         .task-row.core:hover td {
-            background: #e6f4f0;
+            background: #B5EDB5;
         }
 
         .badge {
             display: inline-block;
             padding: 4px 12px;
             border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--success-teal) 0%, var(--success-teal-light) 100%);
-            color: white;
+            font-size: 12px;
+            font-weight: 400;
+            background: var(--success-teal);
+            color: var(--text-inverse);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            box-shadow: 0 2px 4px rgba(15, 164, 127, 0.2);
+            line-height: 16px;
         }
 
         .task-name-cell {
@@ -356,17 +395,17 @@
             padding: 8px 12px;
             border: 1.5px solid var(--border-light);
             border-radius: 6px;
-            font-size: 15px;
+            font-size: 14px;
             text-align: center;
             font-family: inherit;
-            font-weight: 600;
+            font-weight: 500;
             transition: all 0.2s ease;
         }
 
         .task-offset-input:focus {
             outline: none;
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 0 3px rgba(107, 105, 214, 0.1);
+            border-color: var(--stroke-focus);
+            box-shadow: 0 0 0 4px rgba(63, 128, 255, 0.15);
         }
 
         .add-task-row {
@@ -380,15 +419,15 @@
             padding: 12px 16px;
             border: 1.5px solid var(--border-light);
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 14px;
             font-family: inherit;
             transition: all 0.2s ease;
         }
 
         .add-task-row input:focus {
             outline: none;
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 0 4px rgba(107, 105, 214, 0.1);
+            border-color: var(--stroke-focus);
+            box-shadow: 0 0 0 4px rgba(63, 128, 255, 0.15);
         }
 
         .add-task-row input:first-child {
@@ -398,7 +437,7 @@
         .add-task-row input[type="number"] {
             width: 140px;
             text-align: center;
-            font-weight: 600;
+            font-weight: 500;
         }
 
         .calendar-table {
@@ -414,15 +453,16 @@
         }
 
         .calendar-table th {
-            background: linear-gradient(135deg, #2d2c2f 0%, #37352f 100%);
-            color: white;
+            background: #3F80FF;
+            color: var(--text-inverse);
             padding: 18px 16px;
             text-align: left;
-            font-weight: 600;
-            font-size: 13px;
+            font-weight: 500;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+            line-height: 16px;
         }
 
         .calendar-table th:last-child {
@@ -451,36 +491,36 @@
 
         .calendar-table td {
             padding: 18px 16px;
-            border-bottom: 1px solid #f1f1f0;
-            border-right: 1px solid #f7f7f7;
+            border-bottom: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
             text-align: center;
             vertical-align: top;
-            background: white;
+            background: var(--bg-card);
         }
 
         .calendar-table td:first-child {
             text-align: left;
-            font-weight: 600;
-            background: #fafafa;
+            font-weight: 500;
+            background: var(--bg-main);
         }
 
         .calendar-table td:last-child {
             text-align: left;
-            background: #fffef5;
-            font-size: 13px;
+            background: var(--warning-light);
+            font-size: 12px;
             line-height: 1.7;
         }
 
         .calendar-table tr:hover td {
-            background: #f7f8f9;
+            background: var(--bg-main);
         }
 
         .calendar-table tr:hover td:first-child {
-            background: #f0f0f0;
+            background: var(--bg-bold);
         }
 
         .calendar-table tr:hover td:last-child {
-            background: #fff9e6;
+            background: #FFE8A3;
         }
 
         .calendar-table tr:last-child td {
@@ -500,7 +540,7 @@
             background: var(--warning-yellow);
             border-radius: 50%;
             display: inline-block;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.2);
             animation: pulse 2s ease-in-out infinite;
             flex-shrink: 0;
         }
@@ -508,10 +548,10 @@
         .adjustment-indicator {
             width: 10px;
             height: 10px;
-            background: var(--warning-orange);
+            background: var(--info-color);
             border-radius: 50%;
             display: inline-block;
-            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+            box-shadow: 0 0 0 3px rgba(63, 128, 255, 0.2);
             animation: pulse 2s ease-in-out infinite;
             flex-shrink: 0;
             margin-left: 4px;
@@ -546,7 +586,7 @@
         }
 
         .config-card {
-            background: linear-gradient(135deg, #fafafa 0%, #f7f7f7 100%);
+            background: var(--bg-main);
             border: 1.5px solid var(--border-light);
             border-radius: 10px;
             padding: 24px;
@@ -563,13 +603,13 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary-purple) 0%, var(--primary-purple-light) 100%);
+            background: var(--primary-purple);
             transform: scaleX(0);
             transition: transform 0.3s ease;
         }
 
         .config-card:hover {
-            background: white;
+            background: var(--bg-card);
             border-color: var(--primary-purple);
             box-shadow: var(--shadow-lg);
             transform: translateY(-4px);
@@ -618,15 +658,15 @@
         }
 
         .message.success {
-            background: linear-gradient(135deg, #d3f9d8 0%, #c1f5c8 100%);
-            color: #0f5132;
-            border: 1.5px solid #a3cfbb;
+            background: var(--success-teal-light);
+            color: #1C7D29;
+            border: 1.5px solid var(--success-teal);
         }
 
         .message.success::before {
             content: '✓';
             background: var(--success-teal);
-            color: white;
+            color: var(--text-inverse);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -635,15 +675,15 @@
         }
 
         .message.error {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
-            color: #721c24;
-            border: 1.5px solid #f1aeb5;
+            background: var(--danger-light);
+            color: var(--danger-red);
+            border: 1.5px solid var(--danger-red);
         }
 
         .message.error::before {
             content: '!';
             background: var(--danger-red);
-            color: white;
+            color: var(--text-inverse);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -652,14 +692,14 @@
         }
 
         .message.loading {
-            background: linear-gradient(135deg, #e7f3ff 0%, #d4e9ff 100%);
-            color: #052c65;
-            border: 1.5px solid #9ec5fe;
+            background: var(--info-light);
+            color: var(--info-color);
+            border: 1.5px solid var(--info-color);
         }
 
         .message.loading::before {
             content: '';
-            border: 2px solid var(--primary-purple);
+            border: 2px solid var(--info-color);
             border-top-color: transparent;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
@@ -672,7 +712,7 @@
         #payDateConfig {
             margin-top: 20px;
             padding: 24px;
-            background: linear-gradient(135deg, #fafafa 0%, #f7f7f7 100%);
+            background: var(--bg-main);
             border-radius: 10px;
             border: 1.5px solid var(--border-light);
         }
@@ -680,9 +720,9 @@
         .cutoff-mode-selector {
             margin-top: 20px;
             padding: 24px;
-            background: linear-gradient(135deg, #f8f3ff 0%, #f5f0ff 100%);
+            background: var(--bg-main);
             border-radius: 10px;
-            border: 1.5px solid #e5d9ff;
+            border: 1.5px solid var(--border-light);
             box-shadow: var(--shadow-sm);
         }
 
@@ -736,7 +776,7 @@
             align-items: center;
             margin-top: 20px;
             padding: 16px;
-            background: #fafafa;
+            background: var(--bg-main);
             border-radius: 8px;
             flex-wrap: wrap;
             gap: 16px;
@@ -873,16 +913,16 @@
 
         .day-picker-button.selected {
             background: var(--primary-purple);
-            color: white;
+            color: var(--text-inverse);
             border-color: var(--primary-purple);
             font-weight: 600;
-            box-shadow: 0 0 0 2px rgba(107, 105, 214, 0.2);
+            box-shadow: 0 0 0 2px rgba(0, 26, 91, 0.2);
         }
 
         .day-picker-button.last-day {
             grid-column: span 7;
             background: var(--success-teal);
-            color: white;
+            color: var(--text-inverse);
             border-color: var(--success-teal);
             font-weight: 600;
             padding: 10px;
@@ -890,13 +930,13 @@
         }
 
         .day-picker-button.last-day:hover {
-            background: var(--success-teal-light);
-            border-color: var(--success-teal-light);
+            background: #02750a;
+            border-color: #02750a;
         }
 
         .day-picker-button.last-day.selected {
             background: var(--success-teal);
-            box-shadow: 0 0 0 2px rgba(15, 164, 127, 0.2);
+            box-shadow: 0 0 0 2px rgba(3, 148, 9, 0.2);
         }
 
         .day-picker-label {
@@ -932,7 +972,7 @@
             border: none;
             padding: 4px;
             cursor: pointer;
-            color: #D3D3D1;  /* Faint grey by default */
+            color: var(--text-light);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -942,11 +982,11 @@
 
         .clock-icon-button:hover {
             color: var(--text-medium);
-            background: rgba(0, 0, 0, 0.05);
+            background: var(--hover-state);
         }
 
         .clock-icon-button.has-time {
-            color: #000000;  /* Black when time is set */
+            color: var(--text-dark);
         }
 
         .clock-icon-button.has-time:hover {
@@ -1001,7 +1041,7 @@
         .tab-button {
             position: relative;
             padding: 12px 24px;
-            background: #E8EAED;
+            background: var(--bg-bold);
             border: none;
             border-radius: 12px 12px 0 0;
             color: var(--text-medium);
@@ -1013,11 +1053,11 @@
         }
 
         .tab-button:hover:not(.active) {
-            background: #D3D6DA;
+            background: var(--hover-state);
         }
 
         .tab-button.active {
-            background: white;
+            background: var(--bg-card);
             color: var(--text-dark);
             box-shadow:
                 0 -2px 4px rgba(0, 0, 0, 0.05),
@@ -1028,16 +1068,16 @@
         .tab-button.active::after {
             content: '';
             position: absolute;
-            bottom: -1px;
+            bottom: 0;
             left: 0;
             right: 0;
-            height: 2px;
-            background: white;
+            height: 3px;
+            background: var(--primary-purple);
         }
 
         .tab-panel {
             display: none;
-            background: white;
+            background: var(--bg-card);
             padding: 24px 32px;
             margin: 0 -32px -32px -32px;
             border-radius: 0 0 12px 12px;
@@ -1133,8 +1173,12 @@
             min-height: 300px;
             max-height: 50vh;
             overflow-y: auto;
+            overflow-x: visible;
             margin-bottom: 24px;
             flex: 1;
+            padding: 0 4px;
+            margin-left: -4px;
+            margin-right: -4px;
         }
 
         .wizard-panel {
@@ -1165,12 +1209,12 @@
 
         .option-card:hover {
             border-color: var(--primary-purple-light);
-            background: #f8f7ff;
+            background: var(--bg-main);
         }
 
         .option-card.selected {
             border-color: var(--primary-purple);
-            background: #f0efff;
+            background: var(--info-light);
         }
 
         .option-card h4 {
@@ -1202,7 +1246,7 @@
         }
 
         .period-checkbox:hover {
-            background: #fafafa;
+            background: var(--bg-main);
         }
 
         .period-checkbox input[type="checkbox"] {
@@ -1210,14 +1254,14 @@
         }
 
         .offcycle-row {
-            background: #FEF3C7 !important;
+            background: var(--warning-light) !important;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Payroll Calendar Generator <span style="font-size: 0.6em; color: var(--primary-purple); font-weight: 600;">v4.0</span></h1>
+            <h1>Payroll Calendar Generator <span style="font-size: 0.6em; color: var(--primary-purple); font-weight: 600;">v5.1</span></h1>
             <p>Create accurate payroll calendars with bank holidays and working day calculations</p>
         </div>
 
@@ -2193,8 +2237,33 @@
             }
         }
 
-        function deleteTask(index) {
-            if (confirm('Are you sure you want to delete this task?')) {
+        // Custom confirmation modal
+        let confirmResolve = null;
+
+        function showConfirmModal(message, title = 'Confirm', actionText = 'Delete') {
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+                document.getElementById('confirmModalTitle').textContent = title;
+                document.getElementById('confirmModalMessage').textContent = message;
+                document.getElementById('confirmModalAction').textContent = actionText;
+                document.getElementById('confirmModal').style.display = 'flex';
+            });
+        }
+
+        function closeConfirmModal(confirmed) {
+            document.getElementById('confirmModal').style.display = 'none';
+            if (confirmResolve) {
+                confirmResolve(confirmed);
+                confirmResolve = null;
+            }
+        }
+
+        async function deleteTask(index) {
+            const confirmed = await showConfirmModal(
+                'Are you sure you want to delete this task?',
+                'Delete Task'
+            );
+            if (confirmed) {
                 onTaskDeleted(index); // Update constraints before deletion
                 tasks.splice(index, 1);
                 renderTasks();
@@ -4788,8 +4857,12 @@
             showMessage('Configuration loaded successfully!', 'success');
         }
 
-        function deleteConfiguration(id) {
-            if (!confirm('Are you sure you want to delete this configuration?')) return;
+        async function deleteConfiguration(id) {
+            const confirmed = await showConfirmModal(
+                'Are you sure you want to delete this configuration?',
+                'Delete Configuration'
+            );
+            if (!confirmed) return;
 
             const configs = JSON.parse(localStorage.getItem('payrollConfigs') || '[]');
             const filtered = configs.filter(c => c.id !== id);
@@ -4799,8 +4872,13 @@
             showMessage('Configuration deleted', 'success');
         }
 
-        function resetForm() {
-            if (!confirm('Are you sure? This will clear all unsaved data.')) return;
+        async function resetForm() {
+            const confirmed = await showConfirmModal(
+                'Are you sure? This will clear all unsaved data.',
+                'Reset Form',
+                'Reset'
+            );
+            if (!confirmed) return;
 
             document.getElementById('clientName').value = '';
             document.getElementById('employeeCountry').value = '';
@@ -5953,8 +6031,12 @@
             showMessage('Task rule added successfully', 'success');
         }
 
-        function deleteConstraint(constraintId) {
-            if (confirm('Delete this task rule?')) {
+        async function deleteConstraint(constraintId) {
+            const confirmed = await showConfirmModal(
+                'Are you sure you want to delete this task rule?',
+                'Delete Task Rule'
+            );
+            if (confirmed) {
                 const index = taskConstraints.findIndex(c => c.id === constraintId);
                 if (index > -1) {
                     const constraint = taskConstraints[index];
@@ -6854,7 +6936,7 @@
     <!-- Pay Date Override Modal -->
     <!-- Unified Edit Modal -->
     <div id="unifiedEditModal" class="modal-overlay" style="display: none;">
-        <div class="modal" style="max-width: 90%; width: auto; max-height: 90vh; overflow-y: auto; padding-bottom: 0;">
+        <div class="modal" style="max-width: 90%; width: auto; min-height: fit-content; padding-bottom: 24px;">
             <h3 style="margin-bottom: 20px;">Edit Period: <span id="unifiedPeriodLabel"></span></h3>
 
             <!-- Tab Navigation -->
@@ -6909,7 +6991,7 @@
                 <p style="color: var(--warning-orange); margin-bottom: 16px; font-size: 13px;">
                     ⚠️ Manual overrides bypass automatic constraint resolution. Working days are calculated between consecutive tasks.
                 </p>
-                <div id="taskOverrideList" style="max-height: 500px; overflow-x: auto; overflow-y: visible; margin-bottom: 20px;">
+                <div id="taskOverrideList" style="overflow-x: auto; overflow-y: visible; margin-bottom: 20px;">
                     <!-- Task cards will be populated here in horizontal layout -->
                 </div>
 
@@ -7085,8 +7167,7 @@
                         <input type="text"
                                id="offCycleName"
                                placeholder="e.g., Christmas Bonus, Mid-Month Bonus"
-                               onchange="wizardState.offCycleName = this.value"
-                               style="width: 100%; padding: 10px; border: 1.5px solid var(--border-light); border-radius: 6px; font-size: 14px;">
+                               onchange="wizardState.offCycleName = this.value">
                         <span class="help-text">Give this off-cycle a custom name. If left blank, it will use the default naming (e.g., "January 2025 Post-Off-Cycle")</span>
                     </div>
                 </div>
@@ -7222,6 +7303,18 @@
                     <button class="primary" id="wizardNextBtn" onclick="wizardNextStep()">Next →</button>
                     <button class="primary" id="wizardFinishBtn" onclick="finishOffCycleWizard()" style="display: none;">Add to Calendar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 400px; text-align: center;">
+            <h3 id="confirmModalTitle" style="margin-bottom: 12px;">Confirm</h3>
+            <p id="confirmModalMessage" style="color: var(--text-medium); margin-bottom: 24px;"></p>
+            <div class="modal-buttons" style="justify-content: center;">
+                <button class="secondary" onclick="closeConfirmModal(false)">Cancel</button>
+                <button class="danger" id="confirmModalAction" onclick="closeConfirmModal(true)">Delete</button>
             </div>
         </div>
     </div>
